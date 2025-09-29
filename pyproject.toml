@@ -1,0 +1,41 @@
+[project]
+name = "pyscaffold-drwatson"
+version = "0.1.0"
+description = "A Python project scaffolding tool inspired by DrWatson.jl for creating well-structured scientific computing projects"
+readme = "README.md"
+authors = [
+    { name = "isaac-tes", email = "i.tesfaye@tu-berlin.de" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "click>=8.3.0",
+    "h5py>=3.14.0",
+    "jinja2>=3.1.6",
+    "pyyaml>=6.0.3",
+    "rich>=14.1.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.8.11,<0.9.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.2",
+]
+
+[tool.uv.workspace]
+members = [
+    "mytestproj1",
+    "testproj2",
+    "testproj3",
+    "testproj4",
+    "testproj5",
+    "test-enhanced-project",
+    "test_project_demo",
+    "test_combined_demo",
+    "test_final",
+]
+
+[project.scripts]
+drwatson-init = "pyscaffold_drwatson.core:create_project"

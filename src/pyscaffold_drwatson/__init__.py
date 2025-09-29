@@ -1,0 +1,37 @@
+"""
+PyScaffold DrWatson - A Python project scaffolding tool inspired by DrWatson.jl
+
+This tool creates a complete Python project structure with modern tooling (uv),
+comprehensive documentation, example code, and tests.
+"""
+
+from . import drwatson
+from .drwatson import (
+    # Path management
+    datadir, plotsdir, scriptsdir, notebooksdir, docsdir, testsdir, srcdir, projectdir,
+    datafile, plotfile, scriptfile, notebookfile, savename,
+    # Data management
+    save_data, load_data, save_array, load_array, data_info, list_data_files,
+    tagsave, produce_or_load, collect_results,
+
+)
+
+__version__ = "0.1.0"
+
+__all__ = [
+    "drwatson",
+    "datadir", "plotsdir", "scriptsdir", "notebooksdir", "docsdir", "testsdir", "srcdir", "projectdir",
+    "datafile", "plotfile", "scriptfile", "notebookfile", "savename",
+    "save_data", "load_data", "save_array", "load_array", "data_info", "list_data_files",
+    "tagsave", "produce_or_load", "collect_results",
+
+]
+
+from .core import create_project, ProjectScaffolder
+
+# Add core functions to __all__
+__all__.extend(["create_project", "ProjectScaffolder"])
+
+
+def hello() -> str:
+    return "Hello from pyscaffold-drwatson!"
