@@ -38,4 +38,4 @@ members = [
 ]
 
 [project.scripts]
-drwatson-init = "python_drwatson.core:create_project"
+drwatson-init = "pywatson.core:create_project"
