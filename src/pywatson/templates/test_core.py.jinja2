@@ -1,0 +1,92 @@
+"""
+Tests for the {{ package_name }} library.
+"""
+
+import numpy as np
+import pytest
+from pathlib import Path
+import tempfile
+from {{ package_name }} import hello_world, create_example_data, analyze_data
+
+
+def test_hello_world():
+    """Test the hello_world function."""
+    result = hello_world()
+    assert isinstance(result, str)
+    assert "{{ package_name }}" in result
+
+
+def test_create_example_data_random():
+    """Test creation of random data."""
+    size = (50, 3)
+    data = create_example_data(size, "random")
+    
+    assert data.shape == size
+    assert isinstance(data, np.ndarray)
+
+
+def test_create_example_data_linear():
+    """Test creation of linear data."""
+    size = (30, 2)
+    data = create_example_data(size, "linear")
+    
+    assert data.shape == size
+    assert isinstance(data, np.ndarray)
+
+
+def test_create_example_data_sinusoidal():
+    """Test creation of sinusoidal data."""
+    size = (40, 2)
+    data = create_example_data(size, "sinusoidal")
+    
+    assert data.shape == size
+    assert isinstance(data, np.ndarray)
+
+
+def test_create_example_data_invalid():
+    """Test that invalid data type raises ValueError."""
+    with pytest.raises(ValueError):
+        create_example_data((10, 2), "invalid")
+
+
+def test_analyze_data_basic():
+    """Test basic data analysis."""
+    data = np.random.randn(100, 3)
+    results = analyze_data(data, "basic")
+    
+    assert "mean" in results
+    assert "std" in results
+    assert "min" in results
+    assert "max" in results
+    assert len(results["mean"]) == 3
+
+
+def test_analyze_data_correlation():
+    """Test correlation analysis."""
+    data = np.random.randn(50, 2)
+    results = analyze_data(data, "correlation")
+    
+    assert "correlation_matrix" in results
+    assert "mean" in results
+    assert "std" in results
+    assert results["correlation_matrix"].shape == (2, 2)
+
+
+def test_analyze_data_pca():
+    """Test PCA analysis."""
+    data = np.random.randn(100, 3)
+    results = analyze_data(data, "pca")
+    
+    assert "eigenvalues" in results
+    assert "eigenvectors" in results
+    assert "explained_variance_ratio" in results
+    assert len(results["eigenvalues"]) == 3
+
+
+def test_analyze_data_invalid():
+    """Test that invalid method raises ValueError."""
+    data = np.random.randn(10, 2)
+    with pytest.raises(ValueError):
+        analyze_data(data, "invalid")
+
+

@@ -1,0 +1,41 @@
+"""
+{{ project_name_title }}
+
+A Python library for scientific computing and data analysis with built-in
+path management and HDF5 data handling capabilities.
+"""
+
+from .core import (
+    hello_world,
+    create_example_data,
+    analyze_data,
+)
+from .drwatson import (
+    # Path management
+    datadir, plotsdir, scriptsdir, notebooksdir, docsdir, testsdir, srcdir, projectdir,
+    datafile, plotfile, scriptfile, notebookfile, savename,
+    # Data management
+    save_data, load_data, save_array, load_array, data_info, list_data_files,
+    tagsave, produce_or_load, collect_results
+)
+
+__version__ = "0.1.0"
+__author__ = "{{ author_name }}"
+__email__ = "{{ author_email }}"
+
+__all__ = [
+    "hello_world",
+    "create_example_data", 
+    "analyze_data",
+    # Path management
+    "datadir", "plotsdir", "scriptsdir", "notebooksdir", "docsdir", "testsdir", "srcdir", "projectdir",
+    "datafile", "plotfile", "scriptfile", "notebookfile", "savename",
+    # Data management
+    "save_data", "load_data", "save_array", "load_array", "data_info", "list_data_files",
+    "tagsave", "produce_or_load", "collect_results",
+]
+
+
+def hello() -> str:
+    """Legacy hello function for backwards compatibility."""
+    return hello_world()

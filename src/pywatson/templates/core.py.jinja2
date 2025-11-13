@@ -1,0 +1,156 @@
+"""
+Core functionality for {{ project_name }}.
+
+This module provides the main functionality for data analysis and processing.
+"""
+
+import numpy as np
+import matplotlib.pyplot as plt
+from typing import Tuple, Optional, Dict, Any
+from pathlib import Path
+
+
+def hello_world() -> str:
+    """
+    A simple hello world function to verify the package installation.
+    
+    Returns:
+        str: A greeting message.
+    """
+    return f"Hello from {{ package_name }}!"
+
+
+def create_example_data(size: Tuple[int, int] = (100, 2), 
+                       data_type: str = "random") -> np.ndarray:
+    """
+    Create example data for analysis and testing.
+    
+    Args:
+        size: Tuple of (rows, columns) for the data dimensions.
+        data_type: Type of data to create ("random", "linear", "sinusoidal").
+        
+    Returns:
+        np.ndarray: A 2D array containing the example data.
+        
+    Raises:
+        ValueError: If data_type is not supported.
+    """
+    if data_type not in ["random", "linear", "sinusoidal"]:
+        raise ValueError(f"Unsupported data type: {data_type}")
+    
+    rows, cols = size
+    
+    if data_type == "random":
+        return np.random.randn(rows, cols)
+    elif data_type == "linear":
+        x = np.linspace(0, 10, rows)
+        data = np.column_stack([x + np.random.normal(0, 0.1, rows) for _ in range(cols)])
+        return data
+    elif data_type == "sinusoidal":
+        x = np.linspace(0, 4*np.pi, rows)
+        data = np.column_stack([np.sin(x + i*np.pi/4) + np.random.normal(0, 0.1, rows) 
+                               for i in range(cols)])
+        return data
+
+
+def analyze_data(data: np.ndarray, method: str = "basic") -> Dict[str, Any]:
+    """
+    Analyze data using various statistical methods.
+    
+    Args:
+        data: 2D numpy array to analyze.
+        method: Analysis method ("basic", "correlation", "pca").
+        
+    Returns:
+        dict: Dictionary containing analysis results.
+    """
+    results = {}
+    
+    if method == "basic":
+        results["mean"] = np.mean(data, axis=0)
+        results["std"] = np.std(data, axis=0)
+        results["min"] = np.min(data, axis=0)
+        results["max"] = np.max(data, axis=0)
+        
+    elif method == "correlation":
+        results["correlation_matrix"] = np.corrcoef(data.T)
+        results["mean"] = np.mean(data, axis=0)
+        results["std"] = np.std(data, axis=0)
+        
+    elif method == "pca":
+        # Simple PCA implementation
+        centered_data = data - np.mean(data, axis=0)
+        cov_matrix = np.cov(centered_data.T)
+        eigenvalues, eigenvectors = np.linalg.eigh(cov_matrix)
+        
+        # Sort by eigenvalues (descending)
+        idx = np.argsort(eigenvalues)[::-1]
+        eigenvalues = eigenvalues[idx]
+        eigenvectors = eigenvectors[:, idx]
+        
+        results["eigenvalues"] = eigenvalues
+        results["eigenvectors"] = eigenvectors
+        results["explained_variance_ratio"] = eigenvalues / np.sum(eigenvalues)
+        
+    else:
+        raise ValueError(f"Unknown analysis method: {method}")
+    
+    return results
+
+
+def simple_plot(data: np.ndarray, save_path: Optional[Path] = None) -> None:
+    """
+    Create a simple plot of 2D data.
+    
+    Args:
+        data: 2D numpy array to plot.
+        save_path: Optional path to save the plot.
+    """
+    if data.shape[1] < 2:
+        raise ValueError("Data must have at least 2 columns for plotting")
+        
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+    
+    # Scatter plot
+    ax1.scatter(data[:, 0], data[:, 1], alpha=0.6)
+    ax1.set_xlabel("Column 1")
+    ax1.set_ylabel("Column 2")
+    ax1.set_title("Scatter Plot")
+    
+    # Histograms
+    ax2.hist(data[:, 0], alpha=0.7, label="Column 1", bins=30)
+    ax2.hist(data[:, 1], alpha=0.7, label="Column 2", bins=30)
+    ax2.set_xlabel("Value")
+    ax2.set_ylabel("Frequency")
+    ax2.set_title("Histograms")
+    ax2.legend()
+    
+    plt.tight_layout()
+    
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        plt.close()
+    else:
+        plt.show()
+
+
+def compute_basic_stats(data: np.ndarray) -> Dict[str, Any]:
+    """
+    Compute basic statistics for data.
+    
+    Args:
+        data: Input data array.
+        
+    Returns:
+        Dictionary with basic statistics.
+    """
+    return {
+        "shape": data.shape,
+        "mean": np.mean(data, axis=0),
+        "median": np.median(data, axis=0),
+        "std": np.std(data, axis=0),
+        "min": np.min(data, axis=0),
+        "max": np.max(data, axis=0),
+    }
+
+
