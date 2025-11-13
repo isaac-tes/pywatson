@@ -1,7 +1,7 @@
 [project]
-name = "pyscaffold-drwatson"
+name = "pywatson"
 version = "0.1.0"
-description = "A Python project scaffolding tool inspired by DrWatson.jl for creating well-structured scientific computing projects"
+description = "A Python scientific project managment tool inspired by DrWatson.jl for creating well-structured scientific computing projects"
 readme = "README.md"
 authors = [
     { name = "isaac-tes", email = "i.tesfaye@tu-berlin.de" }
@@ -38,4 +38,4 @@ members = [
 ]
 
 [project.scripts]
-drwatson-init = "pyscaffold_drwatson.core:create_project"
+drwatson-init = "python_drwatson.core:create_project"

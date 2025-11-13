@@ -1,5 +1,5 @@
 #!/bin/bash
-# PyScaffold DrWatson - Quick Project Creator
+# PyWatson - Quick Project Creator
 # 
 # This script provides a convenient way to create new DrWatson-style Python projects
 # without having to remember all the command-line options.
@@ -10,7 +10,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$SCRIPT_DIR"
 ORIGINAL_CWD="$(pwd)"
 
-echo "🚀 PyScaffold DrWatson - Project Creator"
+echo "🚀 PyWatson - Project Creator"
 echo "========================================"
 
 # Check if uv is available
@@ -141,7 +141,7 @@ case "${1:-}" in
             --path "$ORIGINAL_CWD" \
             --author-name "$(git config user.name 2>/dev/null || echo 'Your Name')" \
             --author-email "$(git config user.email 2>/dev/null || echo 'your.email@example.com')" \
-            --description "A scientific computing project created with PyScaffold DrWatson"
+            --description "A scientific computing project created with PyWatson"
         
         echo
         echo "✅ Project created successfully!"

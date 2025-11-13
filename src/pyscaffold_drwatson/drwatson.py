@@ -1,5 +1,5 @@
 """
-PyScaffold DrWatson utilities - Combined path and data management.
+PyWatson utilities - Combined path and data management.
 
 This module provides utilities for path management and HDF5 data handling
 with DrWatson.jl-inspired features including git tracking and smart caching.
@@ -78,7 +78,7 @@ def get_project_dir(directory: str, *subdirs, create: bool = True) -> Path:
     
     if project_root is None:
         raise RuntimeError(
-            "Could not find project root. Make sure you're in a PyScaffold DrWatson project "
+            "Could not find project root. Make sure you're in a PyWatson project "
             "(should contain pyproject.toml or .git)"
         )
     
@@ -132,7 +132,7 @@ def projectdir() -> Path:
     project_root = find_project_root()
     if project_root is None:
         raise RuntimeError(
-            "Could not find project root. Make sure you're in a PyScaffold DrWatson project "
+            "Could not find project root. Make sure you're in a PyWatson project "
             "(should contain pyproject.toml)"
         )
     return project_root
@@ -282,7 +282,7 @@ def save_data(data: Dict[str, Any], filename: str,
         
         # Add timestamp and creator info
         metadata['created_at'] = datetime.now().isoformat()
-        metadata['created_by'] = 'PyScaffold DrWatson'
+        metadata['created_by'] = 'PyWatson'
         metadata['script'] = _get_script_info()
         
         # Add git information if requested

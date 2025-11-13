@@ -1,5 +1,5 @@
 """
-PyScaffold DrWatson - A Python project scaffolding tool inspired by DrWatson.jl
+PyWatson - A Python scientific project managment tool inspired by DrWatson.jl
 
 This tool creates a complete Python project structure with modern tooling (uv),
 comprehensive documentation, example code, and tests.
@@ -34,4 +34,4 @@ __all__.extend(["create_project", "ProjectScaffolder"])
 
 
 def hello() -> str:
-    return "Hello from pyscaffold-drwatson!"
+    return "Hello from PyWatson!"

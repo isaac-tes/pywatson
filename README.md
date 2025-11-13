@@ -1,6 +1,6 @@
-# PyScaffold DrWatson
+# PyWatson
 
-A Python project scaffolding tool inspired by [DrWatson.jl](https://juliadynamics.github.io/DrWatson.jl/stable/) for creating well-structured scientific computing projects with modern Python tooling.
+A Python scientific project managment tool inspired by [DrWatson.jl](https://juliadynamics.github.io/DrWatson.jl/stable/) for creating well-structured scientific computing projects with modern Python tooling.
 
 ## Features
 
@@ -25,8 +25,8 @@ A Python project scaffolding tool inspired by [DrWatson.jl](https://juliadynamic
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Clone this repository
-git clone https://github.com/your-username/pyscaffold-drwatson.git
-cd pyscaffold-drwatson
+git clone https://github.com/your-username/pywatson.git
+cd pywatson
 
 # Install in development mode
 uv sync
@@ -167,8 +167,8 @@ plot_path = plotsdir("results")                   # Creates plots/results/
 
 ```bash
 # Clone the repo
-git clone https://github.com/your-username/pyscaffold-drwatson.git
-cd pyscaffold-drwatson
+git clone https://github.com/your-username/pywatson.git
+cd pywatson
 
 # Setup development environment
 uv sync
@@ -188,7 +188,7 @@ uv run drwatson-init test-project \
 ```bash
 # Create a test project to verify everything works
 cd /tmp
-/path/to/pyscaffold-drwatson/create-project.sh test-my-changes
+/path/to/pywatson/create-project.sh test-my-changes
 
 # Test the generated project
 cd test-my-changes
@@ -249,7 +249,7 @@ uv build                   # Build wheel and source dist
 
 ## Comparison with DrWatson.jl
 
-| Feature | DrWatson.jl | PyScaffold DrWatson |
+| Feature | DrWatson.jl | PyWatson |
 |---------|-------------|-------------------|
 | Package Manager | Pkg.jl | uv |
 | Project Structure | ✅ | ✅ |
@@ -267,7 +267,7 @@ uv build                   # Build wheel and source dist
 **Command not found: drwatson-init**
 ```bash
 # Make sure you're in the project directory and have synced
-cd pyscaffold-drwatson
+cd pywatson
 uv sync
 uv run drwatson-init --help
 ```

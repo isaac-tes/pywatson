@@ -1,5 +1,5 @@
 """
-PyScaffold DrWatson - A Python project scaffolding tool inspired by DrWatson.jl
+PyWatson - A Python scientific project managment tool inspired by DrWatson.jl
 
 This tool creates a complete Python project structure with modern tooling (uv),
 comprehensive documentation, example code, and tests.
@@ -490,7 +490,7 @@ def save_data(data: Dict[str, Any], filename: str,
         
         # Add timestamp
         metadata['created_at'] = datetime.now().isoformat()
-        metadata['created_by'] = 'PyScaffold DrWatson Generated Project'
+        metadata['created_by'] = 'PyWatson Generated Project'
         
         # Save metadata as JSON string attribute
         f.attrs['metadata'] = json.dumps(metadata)
