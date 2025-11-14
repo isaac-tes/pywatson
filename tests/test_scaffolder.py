@@ -62,6 +62,8 @@ class TestProjectScaffolder:
             "plots",
             "data",
             "docs",
+            "_research",
+            "_research/tmp",
         ]
         
         for dir_path in expected_dirs:
@@ -222,6 +224,8 @@ class TestFullProjectGeneration:
             "plots",
             "data",
             "docs",
+            "_research",
+            "_research/tmp",
         ]
         
         for dir_path in expected_dirs:

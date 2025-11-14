@@ -105,6 +105,8 @@ class TestTemplateRendering:
             'generate_data.py.jinja2',
             'analyze_data.py.jinja2',
             'gitignore.jinja2',
+            'README.md.jinja2',
+            'notebook.ipynb.jinja2',
         ]
         
         for template_file in expected_templates:
@@ -130,3 +132,46 @@ class TestTemplateRendering:
                 compile(content, f'<{template_name}>', 'exec')
             except SyntaxError as e:
                 pytest.fail(f"Template {template_name} renders invalid Python: {e}")
+    
+    def test_readme_template_renders(self, jinja_env, template_context):
+        """Test that README.md template renders without errors."""
+        context = template_context.copy()
+        context['description'] = 'A test project description'
+        context['deps_list'] = '- **numpy**: numpy>=1.24.0\n- **matplotlib**: matplotlib>=3.7.0'
+        
+        template = jinja_env.get_template('README.md.jinja2')
+        content = template.render(**context)
+        
+        assert '# Test Project' in content
+        assert 'A test project description' in content
+        assert 'test-project' in content
+        assert 'test_project' in content
+        assert '_research/' in content
+        assert 'numpy>=1.24.0' in content
+        assert '## Project Structure' in content
+        assert '## Installation and Setup' in content
+    
+    def test_notebook_template_renders(self, jinja_env, template_context):
+        """Test that notebook.ipynb template renders valid JSON."""
+        import json
+        
+        template = jinja_env.get_template('notebook.ipynb.jinja2')
+        content = template.render(**template_context)
+        
+        # Verify it's valid JSON
+        try:
+            notebook_data = json.loads(content)
+        except json.JSONDecodeError as e:
+            pytest.fail(f"Template notebook.ipynb.jinja2 renders invalid JSON: {e}")
+        
+        # Verify notebook structure
+        assert 'cells' in notebook_data
+        assert 'metadata' in notebook_data
+        assert 'nbformat' in notebook_data
+        assert notebook_data['nbformat'] == 4
+        
+        # Verify content
+        cells_source = ''.join(str(cell.get('source', '')) for cell in notebook_data['cells'])
+        assert 'test_project' in cells_source
+        assert 'Test Project' in cells_source
+        assert 'DrWatson' in cells_source

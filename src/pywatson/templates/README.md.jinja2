@@ -1,0 +1,213 @@
+# {{ project_name_title }}
+
+{{ description }}
+
+## Project Structure
+
+This project follows a structured organization inspired by DrWatson.jl:
+
+```
+{{ project_name }}/
+├── _research/           # WIP scripts, code, notes, and alpha-stage work
+│   └── tmp/            # Temporary data folder
+├── src/                 # Source code for the library
+│   └── {{ package_name }}/
+├── scripts/             # Standalone scripts and utilities
+├── notebooks/           # Jupyter notebooks for analysis and examples
+├── tests/               # Unit tests
+├── plots/               # Generated plots and figures
+├── data/                # Data files (raw and processed)
+├── docs/                # Documentation
+├── pyproject.toml       # Project configuration and dependencies
+└── README.md           # This file
+```
+
+## Installation and Setup
+
+This project uses [uv](https://docs.astral.sh/uv/) for dependency management and virtual environment handling. Follow these steps to set up the project:
+
+### Prerequisites
+
+- Python 3.9 or higher
+- [uv](https://docs.astral.sh/uv/) package manager
+
+Install uv if you haven't already:
+```bash
+# On macOS/Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# On Windows
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+### Setting up the project
+
+1. **Clone the repository:**
+   ```bash
+   git clone <repository-url>
+   cd {{ project_name }}
+   ```
+
+2. **Install dependencies and activate the environment:**
+   ```bash
+   # This will create a virtual environment and install all dependencies
+   uv sync
+   ```
+
+3. **Activate the virtual environment:**
+   ```bash
+   # Activate the environment
+   source .venv/bin/activate  # On Unix/macOS
+   # or
+   .venv\Scripts\activate     # On Windows
+   ```
+
+### Environment Management
+
+#### Activating the Environment
+```bash
+# Method 1: Traditional activation
+source .venv/bin/activate  # Unix/macOS
+.venv\Scripts\activate     # Windows
+
+# Method 2: Using uv run (runs commands in the project environment)
+uv run python script.py
+uv run jupyter notebook
+```
+
+#### Deactivating the Environment
+```bash
+deactivate
+```
+
+## Quick Guide to uv
+
+### Basic Commands
+
+- **Create a new project:** `uv init --lib project-name`
+- **Add dependencies:** `uv add package-name`
+- **Add development dependencies:** `uv add --group dev package-name`
+- **Remove dependencies:** `uv remove package-name`
+- **Install project dependencies:** `uv sync`
+- **Run commands in the project environment:** `uv run command`
+- **Show project info:** `uv tree`
+- **Lock dependencies:** `uv lock`
+
+### Working with Dependencies
+
+```bash
+# Add a specific version
+uv add "numpy==1.24.0"
+
+# Add from PyPI
+uv add requests
+
+# Add development dependencies
+uv add --group dev pytest
+
+# Install from requirements.txt
+uv add -r requirements.txt
+```
+
+### Running Code
+
+```bash
+# Run Python scripts
+uv run python src/your_script.py
+
+# Run Jupyter notebooks
+uv run jupyter notebook
+
+# Run tests
+uv run pytest
+
+# Run any command in the virtual environment
+uv run <command>
+```
+
+## Usage
+
+### Running the Example Analysis
+```bash
+uv run python scripts/example_analysis.py
+```
+
+### Running Jupyter Notebooks
+```bash
+uv run jupyter notebook
+# Navigate to the notebooks/ directory for examples
+```
+
+### Running Tests
+```bash
+uv run pytest tests/ -v
+```
+
+### Using the Library
+
+```python
+from {{ package_name }} import create_example_data, analyze_data
+
+# Create example data
+data = create_example_data((100, 3), "random")
+
+# Perform basic analysis
+results = analyze_data(data, "basic")
+print(f"Mean: {results['mean']}")
+
+# Perform different types of analysis
+correlation_results = analyze_data(data, "correlation")
+pca_results = analyze_data(data, "pca")
+```
+
+## Development
+
+### Installing in Development Mode
+The package is automatically installed in development mode when you run `uv sync`. Any changes to the source code will be immediately available.
+
+### Adding New Dependencies
+```bash
+# Add a new runtime dependency
+uv add new-package
+
+# Add a new development dependency
+uv add --group dev new-dev-package
+```
+
+### Project Dependencies
+
+This project includes the following key dependencies:
+{{ deps_list }}
+
+## API Reference
+
+### Core Functions
+
+- `hello_world()`: Simple greeting function for testing installation
+- `create_example_data(size, data_type)`: Generate example datasets
+- `analyze_data(data, method)`: Perform various statistical analyses
+
+### Analysis Functions
+
+The package provides simple analysis functions:
+
+- `compute_statistics()`: Calculate descriptive statistics
+- `plot_data(save_path, plot_type)`: Create visualizations
+- `export_results(filepath)`: Export analysis results
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests for new functionality
+5. Run the test suite: `uv run pytest`
+6. Submit a pull request
+
+## Author
+
+**{{ author_name }}** - {{ author_email }}
+
+## License
+
+[Add your license information here]

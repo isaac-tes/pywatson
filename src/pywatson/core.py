@@ -63,6 +63,8 @@ class ProjectScaffolder:
             "plots",
             "data",
             "docs",
+            "_research",
+            "_research/tmp",
         ]
         
         for directory in track(directories, description="Creating directories..."):
@@ -184,223 +186,25 @@ class ProjectScaffolder:
 
     def create_readme(self, author_name: str, author_email: str, 
                      dependencies: List[str], description: str) -> None:
-        """Create a comprehensive README.md file."""
+        """Create a comprehensive README.md file using Jinja2 template."""
+        console.print("📄 Creating README.md from template...", style="bold blue")
         
+        # Format dependencies list
         deps_list = "\n".join([f"- **{dep.split('==')[0] if '==' in dep else dep.split('>=')[0] if '>=' in dep else dep}**: {dep}" for dep in dependencies])
         
-        readme_content = f'''# {self.project_name.title().replace("-", " ").replace("_", " ")}
-
-{description}
-
-## Project Structure
-
-This project follows a structured organization inspired by DrWatson.jl:
-
-```
-{self.project_name}/
-├── src/                 # Source code for the library
-│   └── {self.package_name}/
-├── scripts/             # Standalone scripts and utilities
-├── notebooks/           # Jupyter notebooks for analysis and examples
-├── tests/               # Unit tests
-├── plots/               # Generated plots and figures
-├── data/                # Data files (raw and processed)
-├── docs/                # Documentation
-├── pyproject.toml       # Project configuration and dependencies
-└── README.md           # This file
-```
-
-## Installation and Setup
-
-This project uses [uv](https://docs.astral.sh/uv/) for dependency management and virtual environment handling. Follow these steps to set up the project:
-
-### Prerequisites
-
-- Python 3.9 or higher
-- [uv](https://docs.astral.sh/uv/) package manager
-
-Install uv if you haven't already:
-```bash
-# On macOS/Linux
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# On Windows
-powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
-```
-
-### Setting up the project
-
-1. **Clone the repository:**
-   ```bash
-   git clone <repository-url>
-   cd {self.project_name}
-   ```
-
-2. **Install dependencies and activate the environment:**
-   ```bash
-   # This will create a virtual environment and install all dependencies
-   uv sync
-   ```
-
-3. **Activate the virtual environment:**
-   ```bash
-   # Activate the environment
-   source .venv/bin/activate  # On Unix/macOS
-   # or
-   .venv\\Scripts\\activate     # On Windows
-   ```
-
-### Environment Management
-
-#### Activating the Environment
-```bash
-# Method 1: Traditional activation
-source .venv/bin/activate  # Unix/macOS
-.venv\\Scripts\\activate     # Windows
-
-# Method 2: Using uv run (runs commands in the project environment)
-uv run python script.py
-uv run jupyter notebook
-```
-
-#### Deactivating the Environment
-```bash
-deactivate
-```
-
-## Quick Guide to uv
-
-### Basic Commands
-
-- **Create a new project:** `uv init --lib project-name`
-- **Add dependencies:** `uv add package-name`
-- **Add development dependencies:** `uv add --group dev package-name`
-- **Remove dependencies:** `uv remove package-name`
-- **Install project dependencies:** `uv sync`
-- **Run commands in the project environment:** `uv run command`
-- **Show project info:** `uv tree`
-- **Lock dependencies:** `uv lock`
-
-### Working with Dependencies
-
-```bash
-# Add a specific version
-uv add "numpy==1.24.0"
-
-# Add from PyPI
-uv add requests
-
-# Add development dependencies
-uv add --group dev pytest
-
-# Install from requirements.txt
-uv add -r requirements.txt
-```
-
-### Running Code
-
-```bash
-# Run Python scripts
-uv run python src/your_script.py
-
-# Run Jupyter notebooks
-uv run jupyter notebook
-
-# Run tests
-uv run pytest
-
-# Run any command in the virtual environment
-uv run <command>
-```
-
-## Usage
-
-### Running the Example Analysis
-```bash
-uv run python scripts/example_analysis.py
-```
-
-### Running Jupyter Notebooks
-```bash
-uv run jupyter notebook
-# Navigate to the notebooks/ directory for examples
-```
-
-### Running Tests
-```bash
-uv run pytest tests/ -v
-```
-
-### Using the Library
-
-```python
-from {self.package_name} import create_example_data, analyze_data
-
-# Create example data
-data = create_example_data((100, 3), "random")
-
-# Perform basic analysis
-results = analyze_data(data, "basic")
-print(f"Mean: {{results['mean']}}")
-
-# Perform different types of analysis
-correlation_results = analyze_data(data, "correlation")
-pca_results = analyze_data(data, "pca")
-```
-
-## Development
-
-### Installing in Development Mode
-The package is automatically installed in development mode when you run `uv sync`. Any changes to the source code will be immediately available.
-
-### Adding New Dependencies
-```bash
-# Add a new runtime dependency
-uv add new-package
-
-# Add a new development dependency
-uv add --group dev new-dev-package
-```
-
-### Project Dependencies
-
-This project includes the following key dependencies:
-{deps_list}
-
-## API Reference
-
-### Core Functions
-
-- `hello_world()`: Simple greeting function for testing installation
-- `create_example_data(size, data_type)`: Generate example datasets
-- `analyze_data(data, method)`: Perform various statistical analyses
-
-### Analysis Functions
-
-The package provides simple analysis functions:
-
-- `compute_statistics()`: Calculate descriptive statistics
-- `plot_data(save_path, plot_type)`: Create visualizations
-- `export_results(filepath)`: Export analysis results
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests for new functionality
-5. Run the test suite: `uv run pytest`
-6. Submit a pull request
-
-## Author
-
-**{author_name}** - {author_email}
-
-## License
-
-[Add your license information here]
-'''
+        # Prepare template context
+        context = {
+            'project_name': self.project_name,
+            'project_name_title': self.project_name.title().replace("-", " ").replace("_", " "),
+            'package_name': self.package_name,
+            'author_name': author_name,
+            'author_email': author_email,
+            'description': description,
+            'deps_list': deps_list,
+        }
         
+        # Render template
+        readme_content = self._render_template('README.md.jinja2', **context)
         (self.project_path / "README.md").write_text(readme_content)
 
     def update_pyproject_toml(self, author_name: str, author_email: str, description: str) -> None:
@@ -428,173 +232,19 @@ The package provides simple analysis functions:
         (self.project_path / ".gitignore").write_text(gitignore_content)
 
     def create_example_notebook(self) -> None:
-        """Create a simplified example Jupyter notebook for the project."""
-        import json
+        """Create a simplified example Jupyter notebook using Jinja2 template."""
+        console.print("📓 Creating example notebook from template...", style="bold blue")
         
-        # Create a clean, simple notebook structure
-        notebook_content = {
-            "cells": [
-                {
-                    "cell_type": "markdown",
-                    "metadata": {},
-                    "source": [
-                        f"# {self.project_name.title()} - DrWatson Example\n",
-                        "\n",
-                        "This notebook demonstrates the main features of the DrWatson-style project structure."
-                    ]
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": None,
-                    "metadata": {},
-                    "outputs": [],
-                    "source": [
-                        "# Import the project modules\n",
-                        f"from {self.package_name} import (\n",
-                        "    datadir, plotsdir, savename, save_data, load_data,\n",
-                        "    create_example_data, analyze_data\n",
-                        ")\n",
-                        "import numpy as np\n",
-                        "import matplotlib.pyplot as plt\n",
-                        "\n",
-                        "# Set up matplotlib for inline plotting\n",
-                        "%matplotlib inline\n",
-                        "\n",
-                        "print('DrWatson-style workflow ready!')"
-                    ]
-                },
-                {
-                    "cell_type": "markdown",
-                    "metadata": {},
-                    "source": [
-                        "## Path Management\n",
-                        "\n",
-                        "DrWatson provides convenient path management functions."
-                    ]
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": None,
-                    "metadata": {},
-                    "outputs": [],
-                    "source": [
-                        "# Show project directories\n",
-                        "print('Project directories:')\n",
-                        "print(f'  Data directory: {datadir()}')\n",
-                        "print(f'  Plots directory: {plotsdir()}')\n",
-                        "\n",
-                        "# Create a savename for files\n",
-                        "params = {'alpha': 0.5, 'beta': 10, 'method': 'demo'}\n",
-                        "filename = savename(params, suffix='.h5')\n",
-                        "print(f'\\nGenerated filename: {filename}')"
-                    ]
-                },
-                {
-                    "cell_type": "markdown",
-                    "metadata": {},
-                    "source": [
-                        "## Data Generation and Analysis"
-                    ]
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": None,
-                    "metadata": {},
-                    "outputs": [],
-                    "source": [
-                        "# Create example data\n",
-                        "data = create_example_data((100, 2), 'random')\n",
-                        "print(f'Generated data shape: {data.shape}')\n",
-                        "\n",
-                        "# Analyze the data\n",
-                        "results = analyze_data(data, 'basic')\n",
-                        "print('\\nAnalysis results:')\n",
-                        "for key, value in results.items():\n",
-                        "    print(f'  {key}: {value}')"
-                    ]
-                },
-                {
-                    "cell_type": "markdown",
-                    "metadata": {},
-                    "source": [
-                        "## Data Saving and Loading"
-                    ]
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": None,
-                    "metadata": {},
-                    "outputs": [],
-                    "source": [
-                        "# Save data with metadata\n",
-                        "sample_data = {'experiment_data': data}\n",
-                        "metadata = {\n",
-                        "    'experiment': 'notebook_demo',\n",
-                        "    'date': '2025-09-26',\n",
-                        "    'notes': 'Generated from example notebook'\n",
-                        "}\n",
-                        "\n",
-                        "saved_path = save_data(sample_data, 'demo_experiment', metadata=metadata)\n",
-                        "print(f'Data saved to: {saved_path}')\n",
-                        "\n",
-                        "# Load it back\n",
-                        "loaded_data = load_data('demo_experiment')\n",
-                        "print(f'\\nLoaded data keys: {list(loaded_data.keys())}')\n",
-                        "print(f'Loaded data shape: {loaded_data[\"experiment_data\"].shape}')"
-                    ]
-                },
-                {
-                    "cell_type": "markdown",
-                    "metadata": {},
-                    "source": [
-                        "## Visualization"
-                    ]
-                },
-                {
-                    "cell_type": "code",
-                    "execution_count": None,
-                    "metadata": {},
-                    "outputs": [],
-                    "source": [
-                        "# Create a simple plot\n",
-                        "plt.figure(figsize=(8, 6))\n",
-                        "plt.scatter(data[:, 0], data[:, 1], alpha=0.6)\n",
-                        "plt.title('Example Data Visualization')\n",
-                        "plt.xlabel('Feature 1')\n",
-                        "plt.ylabel('Feature 2')\n",
-                        "plt.grid(True, alpha=0.3)\n",
-                        "plt.show()\n",
-                        "\n",
-                        "print('Visualization complete!')"
-                    ]
-                }
-            ],
-            "metadata": {
-                "kernelspec": {
-                    "display_name": "Python 3",
-                    "language": "python",
-                    "name": "python3"
-                },
-                "language_info": {
-                    "codemirror_mode": {
-                        "name": "ipython",
-                        "version": 3
-                    },  
-                    "file_extension": ".py",
-                    "mimetype": "text/x-python",
-                    "name": "python",
-                    "nbconvert_exporter": "python",
-                    "pygments_lexer": "ipython3",
-                    "version": "3.12.0"
-                }
-            },
-            "nbformat": 4,
-            "nbformat_minor": 4
+        # Prepare template context
+        context = {
+            'project_name_title': self.project_name.title().replace("-", " ").replace("_", " "),
+            'package_name': self.package_name,
         }
         
+        # Render template
+        notebook_content = self._render_template('notebook.ipynb.jinja2', **context)
         notebook_path = self.project_path / "notebooks" / f"{self.package_name}_example.ipynb"
-        with open(notebook_path, 'w') as f:
-            json.dump(notebook_content, f, indent=2)
+        notebook_path.write_text(notebook_content)
 
 
 def load_environment_file(env_file: Path) -> tuple[List[str], List[str]]:

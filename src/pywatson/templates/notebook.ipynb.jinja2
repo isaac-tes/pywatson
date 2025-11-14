@@ -1,0 +1,159 @@
+{
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "# {{ project_name_title }} - DrWatson Example\n",
+        "\n",
+        "This notebook demonstrates the main features of the DrWatson-style project structure."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {},
+      "outputs": [],
+      "source": [
+        "# Import the project modules\n",
+        "from {{ package_name }} import (\n",
+        "    datadir, plotsdir, savename, save_data, load_data,\n",
+        "    create_example_data, analyze_data\n",
+        ")\n",
+        "import numpy as np\n",
+        "import matplotlib.pyplot as plt\n",
+        "\n",
+        "# Set up matplotlib for inline plotting\n",
+        "%matplotlib inline\n",
+        "\n",
+        "print('DrWatson-style workflow ready!')"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "## Path Management\n",
+        "\n",
+        "DrWatson provides convenient path management functions."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {},
+      "outputs": [],
+      "source": [
+        "# Show project directories\n",
+        "print('Project directories:')\n",
+        "print(f'  Data directory: {datadir()}')\n",
+        "print(f'  Plots directory: {plotsdir()}')\n",
+        "\n",
+        "# Create a savename for files\n",
+        "params = {'alpha': 0.5, 'beta': 10, 'method': 'demo'}\n",
+        "filename = savename(params, suffix='.h5')\n",
+        "print(f'\\nGenerated filename: {filename}')"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "## Data Generation and Analysis"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {},
+      "outputs": [],
+      "source": [
+        "# Create example data\n",
+        "data = create_example_data((100, 2), 'random')\n",
+        "print(f'Generated data shape: {data.shape}')\n",
+        "\n",
+        "# Analyze the data\n",
+        "results = analyze_data(data, 'basic')\n",
+        "print('\\nAnalysis results:')\n",
+        "for key, value in results.items():\n",
+        "    print(f'  {key}: {value}')"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "## Data Saving and Loading"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {},
+      "outputs": [],
+      "source": [
+        "# Save data with metadata\n",
+        "sample_data = {'experiment_data': data}\n",
+        "metadata = {\n",
+        "    'experiment': 'notebook_demo',\n",
+        "    'date': '2025-09-26',\n",
+        "    'notes': 'Generated from example notebook'\n",
+        "}\n",
+        "\n",
+        "saved_path = save_data(sample_data, 'demo_experiment', metadata=metadata)\n",
+        "print(f'Data saved to: {saved_path}')\n",
+        "\n",
+        "# Load it back\n",
+        "loaded_data = load_data('demo_experiment')\n",
+        "print(f'\\nLoaded data keys: {list(loaded_data.keys())}')\n",
+        "print(f'Loaded data shape: {loaded_data[\"experiment_data\"].shape}')"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "## Visualization"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {},
+      "outputs": [],
+      "source": [
+        "# Create a simple plot\n",
+        "plt.figure(figsize=(8, 6))\n",
+        "plt.scatter(data[:, 0], data[:, 1], alpha=0.6)\n",
+        "plt.title('Example Data Visualization')\n",
+        "plt.xlabel('Feature 1')\n",
+        "plt.ylabel('Feature 2')\n",
+        "plt.grid(True, alpha=0.3)\n",
+        "plt.show()\n",
+        "\n",
+        "print('Visualization complete!')"
+      ]
+    }
+  ],
+  "metadata": {
+    "kernelspec": {
+      "display_name": "Python 3",
+      "language": "python",
+      "name": "python3"
+    },
+    "language_info": {
+      "codemirror_mode": {
+        "name": "ipython",
+        "version": 3
+      },
+      "file_extension": ".py",
+      "mimetype": "text/x-python",
+      "name": "python",
+      "nbconvert_exporter": "python",
+      "pygments_lexer": "ipython3",
+      "version": "3.12.0"
+    }
+  },
+  "nbformat": 4,
+  "nbformat_minor": 4
+}
