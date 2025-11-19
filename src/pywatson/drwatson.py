@@ -158,7 +158,8 @@ def notebookfile(filename: str, create_dir: bool = True) -> Path:
     return notebooksdir(create=create_dir) / filename
 
 
-def savename(d: dict, suffix: str = ".h5", connector: str = "_", access=None) -> str:
+def savename(d: dict, suffix: str = ".h5", connector: str = "_", 
+             access=None, digits: int = 3, ignore_keys: Optional[list] = None) -> str:
     """
     Create a filename from a dictionary, similar to DrWatson's savename.
     
@@ -167,6 +168,8 @@ def savename(d: dict, suffix: str = ".h5", connector: str = "_", access=None) ->
         suffix: File suffix to be appended.
         connector: String used to join key-value pairs.
         access: Function to access specific properties of values.
+        digits: Number of significant digits for floats (default: 3).
+        ignore_keys: List of keys to exclude from filename.
         
     Returns:
         Formatted filename.
@@ -174,19 +177,34 @@ def savename(d: dict, suffix: str = ".h5", connector: str = "_", access=None) ->
     Example:
         >>> savename({"alpha": 0.5, "beta": 10}, suffix=".h5")
         'alpha=0.5_beta=10.h5'
+        >>> savename({"alpha": 0.6666666, "beta": 10}, digits=2)
+        'alpha=0.67_beta=10.h5'
     """
     if not d:
         return suffix
     
+    if ignore_keys is None:
+        ignore_keys = []
+    
     # Sort keys for consistent naming
-    sorted_keys = sorted(d.keys())
+    sorted_keys = sorted(k for k in d.keys() if k not in ignore_keys)
     
     parts = []
     for k in sorted_keys:
         v = d[k]
         if access is not None:
             v = access(v)
-        parts.append(f"{k}={v}")
+        
+        # Format floats with specified precision
+        if isinstance(v, float):
+            # Round to specified digits
+            v = round(v, digits)
+            # Remove trailing zeros and decimal point if integer
+            v_str = f"{v:.{digits}f}".rstrip('0').rstrip('.')
+        else:
+            v_str = str(v)
+        
+        parts.append(f"{k}={v_str}")
     
     return connector.join(parts) + suffix
 
