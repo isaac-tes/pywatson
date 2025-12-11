@@ -148,16 +148,7 @@ uv run pytest tests/ -v
 ```python
 from {{ package_name }} import create_example_data, analyze_data
 
-# Create example data
-data = create_example_data((100, 3), "random")
-
-# Perform basic analysis
-results = analyze_data(data, "basic")
-print(f"Mean: {results['mean']}")
-
-# Perform different types of analysis
-correlation_results = analyze_data(data, "correlation")
-pca_results = analyze_data(data, "pca")
+# ...
 ```
 
 ## Development
@@ -174,26 +165,6 @@ uv add new-package
 uv add --group dev new-dev-package
 ```
 
-### Project Dependencies
-
-This project includes the following key dependencies:
-{{ deps_list }}
-
-## API Reference
-
-### Core Functions
-
-- `hello_world()`: Simple greeting function for testing installation
-- `create_example_data(size, data_type)`: Generate example datasets
-- `analyze_data(data, method)`: Perform various statistical analyses
-
-### Analysis Functions
-
-The package provides simple analysis functions:
-
-- `compute_statistics()`: Calculate descriptive statistics
-- `plot_data(save_path, plot_type)`: Create visualizations
-- `export_results(filepath)`: Export analysis results
 
 ## Contributing
 
