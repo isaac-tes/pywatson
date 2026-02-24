@@ -22,73 +22,68 @@ _PROJECT_ROOT = None
 # Core path and data management functionality for DrWatson-style projects
 
 
-
-
-
-
-
 def find_project_root(start_path: Optional[Union[str, Path]] = None) -> Optional[Path]:
     """
     Find the project root directory by looking for pyproject.toml or .git.
-    
+
     Args:
         start_path: Starting directory to search from. Defaults to current directory.
-        
+
     Returns:
         Path to project root or None if not found.
     """
     global _PROJECT_ROOT
-    
+
     if _PROJECT_ROOT is not None:
         return _PROJECT_ROOT
-    
+
     if start_path is None:
         start_path = Path.cwd()
     else:
         start_path = Path(start_path)
-    
+
     current = start_path.resolve()
-    
+
     # Walk up the directory tree looking for pyproject.toml or .git
     while current != current.parent:
         if (current / "pyproject.toml").exists() or (current / ".git").exists():
             _PROJECT_ROOT = current
             return _PROJECT_ROOT
         current = current.parent
-    
+
     return None
 
 
 def get_project_dir(directory: str, *subdirs, create: bool = True) -> Path:
     """
     Get path to a project directory (data, plots, scripts, etc.) with optional subdirectories.
-    
+
     Args:
         directory: Directory name (e.g., 'data', 'plots', 'scripts', 'notebooks')
         *subdirs: Optional subdirectories to append
         create: Whether to create the directory if it doesn't exist
-        
+
     Returns:
         Path to the requested directory
-        
+
     Raises:
         RuntimeError: If project root cannot be found
     """
     project_root = find_project_root()
-    
+
     if project_root is None:
         raise RuntimeError(
             "Could not find project root. Make sure you're in a PyWatson project "
             "(should contain pyproject.toml or .git)"
         )
-    
+
     dir_path = project_root / directory
     if subdirs:
         dir_path = dir_path.joinpath(*subdirs)
-    
+
     if create and not dir_path.exists():
         dir_path.mkdir(parents=True, exist_ok=True)
-    
+
     return dir_path
 
 
@@ -158,11 +153,17 @@ def notebookfile(filename: str, create_dir: bool = True) -> Path:
     return notebooksdir(create=create_dir) / filename
 
 
-def savename(d: dict, suffix: str = ".h5", connector: str = "_", 
-             access=None, digits: int = 3, ignore_keys: Optional[list] = None) -> str:
+def savename(
+    d: dict,
+    suffix: str = ".h5",
+    connector: str = "_",
+    access=None,
+    digits: int = 3,
+    ignore_keys: Optional[list] = None,
+) -> str:
     """
     Create a filename from a dictionary, similar to DrWatson's savename.
-    
+
     Args:
         d: Dictionary with parameter values.
         suffix: File suffix to be appended.
@@ -170,10 +171,10 @@ def savename(d: dict, suffix: str = ".h5", connector: str = "_",
         access: Function to access specific properties of values.
         digits: Number of significant digits for floats (default: 3).
         ignore_keys: List of keys to exclude from filename.
-        
+
     Returns:
         Formatted filename.
-        
+
     Example:
         >>> savename({"alpha": 0.5, "beta": 10}, suffix=".h5")
         'alpha=0.5_beta=10.h5'
@@ -182,30 +183,30 @@ def savename(d: dict, suffix: str = ".h5", connector: str = "_",
     """
     if not d:
         return suffix
-    
+
     if ignore_keys is None:
         ignore_keys = []
-    
+
     # Sort keys for consistent naming
     sorted_keys = sorted(k for k in d.keys() if k not in ignore_keys)
-    
+
     parts = []
     for k in sorted_keys:
         v = d[k]
         if access is not None:
             v = access(v)
-        
+
         # Format floats with specified precision
         if isinstance(v, float):
             # Round to specified digits
             v = round(v, digits)
             # Remove trailing zeros and decimal point if integer
-            v_str = f"{v:.{digits}f}".rstrip('0').rstrip('.')
+            v_str = f"{v:.{digits}f}".rstrip("0").rstrip(".")
         else:
             v_str = str(v)
-        
+
         parts.append(f"{k}={v_str}")
-    
+
     return connector.join(parts) + suffix
 
 
@@ -215,15 +216,9 @@ def _run_git_command(cmd, cwd=None):
     if cwd is None:
         project_root = find_project_root()
         cwd = project_root if project_root else Path.cwd()
-    
+
     try:
-        result = subprocess.run(
-            ["git"] + cmd,
-            capture_output=True,
-            text=True,
-            check=True,
-            cwd=cwd
-        )
+        result = subprocess.run(["git"] + cmd, capture_output=True, text=True, check=True, cwd=cwd)
         return result.stdout.strip()
     except (subprocess.SubprocessError, FileNotFoundError):
         return None
@@ -250,10 +245,10 @@ def _get_script_info():
         # Get the frame of the caller (skip this function and save_data/tagsave)
         caller = inspect.getouterframes(frame)[2]
         script_absolute_path = Path(caller.filename).resolve()
-        
+
         # Get the project root path
         project_root = find_project_root()
-        
+
         # Try to get relative path from project root
         if project_root:
             try:
@@ -261,7 +256,7 @@ def _get_script_info():
                 return str(script_relative_path)
             except ValueError:
                 pass
-        
+
         # If not in project directory, use the full path
         return str(script_absolute_path)
     except (IndexError, AttributeError):
@@ -271,53 +266,57 @@ def _get_script_info():
 
 
 # Data management functions
-def save_data(data: Dict[str, Any], filename: str, 
-              metadata: Optional[Dict[str, Any]] = None,
-              compression: Optional[str] = 'gzip',
-              include_git: bool = True) -> Path:
+def save_data(
+    data: Dict[str, Any],
+    filename: str,
+    metadata: Optional[Dict[str, Any]] = None,
+    compression: Optional[str] = "gzip",
+    include_git: bool = True,
+) -> Path:
     """
     Save data to HDF5 file in the data directory with metadata and git information.
-    
+
     Args:
         data: Dictionary of data to save (keys become HDF5 groups/datasets)
         filename: Name of the file (without extension)
         metadata: Optional metadata dictionary
         compression: Compression method ('gzip', 'lzf', 'szip', or None)
         include_git: Whether to include git information in metadata
-        
+
     Returns:
         Path to the saved file
     """
-    if not filename.suffix=='.h5':
-        filename = filename + '.h5'
-    
+    # Ensure filename has .h5 extension (filename is a str, not Path)
+    if not filename.endswith(".h5"):
+        filename = filename + ".h5"
+
     filepath = datafile(filename)
-    
-    with h5py.File(filepath, 'w') as f:
+
+    with h5py.File(filepath, "w") as f:
         # Prepare metadata
         if metadata is None:
             metadata = {}
-        
+
         # Add timestamp and creator info
-        metadata['created_at'] = datetime.now().isoformat()
-        metadata['created_by'] = 'PyWatson'
-        metadata['script'] = _get_script_info()
-        
+        metadata["created_at"] = datetime.now().isoformat()
+        metadata["created_by"] = "PyWatson"
+        metadata["script"] = _get_script_info()
+
         # Add git information if requested
         if include_git:
             git_info = {
-                'gitcommit': current_git_commit(),
-                'gitpatch': not git_status_clean() if git_status_clean() is not None else None,
-                'gitbranch': _run_git_command(["rev-parse", "--abbrev-ref", "HEAD"]),
+                "gitcommit": current_git_commit(),
+                "gitpatch": not git_status_clean() if git_status_clean() is not None else None,
+                "gitbranch": _run_git_command(["rev-parse", "--abbrev-ref", "HEAD"]),
             }
             # Only add non-None values
             git_info = {k: v for k, v in git_info.items() if v is not None}
             if git_info:
                 metadata.update(git_info)
-        
+
         # Save metadata as JSON string attribute
-        f.attrs['metadata'] = json.dumps(metadata)
-        
+        f.attrs["metadata"] = json.dumps(metadata)
+
         # Save data
         for key, value in data.items():
             if isinstance(value, np.ndarray):
@@ -326,7 +325,7 @@ def save_data(data: Dict[str, Any], filename: str,
                 f.create_dataset(key, data=value)
             elif isinstance(value, str):
                 # Handle string data properly for HDF5
-                f.create_dataset(key, data=value.encode('utf-8') if value else b'')
+                f.create_dataset(key, data=value.encode("utf-8") if value else b"")
             elif isinstance(value, (list, tuple)):
                 f.create_dataset(key, data=np.array(value), compression=compression)
             elif isinstance(value, dict):
@@ -339,40 +338,41 @@ def save_data(data: Dict[str, Any], filename: str,
                     f.create_dataset(key, data=np.array(value), compression=compression)
                 except Exception as e:
                     print(f"Warning: Could not save {key}: {e}")
-    
+
     return filepath
 
 
 def load_data(filename: str, keys: Optional[list] = None) -> Dict[str, Any]:
     """
     Load data from HDF5 file in the data directory.
-    
+
     Args:
         filename: Name of the file (with or without .h5 extension)
         keys: Optional list of dataset keys to load. If None, loads all datasets.
               Metadata is always loaded regardless of this parameter.
-        
+
     Returns:
         Dictionary containing the loaded data and metadata
     """
-    if not filename.suffix=='.h5':
-        filename = filename + '.h5'
-    
+    # Ensure filename has .h5 extension (filename is a str, not Path)
+    if not filename.endswith(".h5"):
+        filename = filename + ".h5"
+
     filepath = datafile(filename, create_dir=False)
-    
+
     if not filepath.exists():
         raise FileNotFoundError(f"Data file not found: {filepath}")
-    
+
     data = {}
-    
-    with h5py.File(filepath, 'r') as f:
+
+    with h5py.File(filepath, "r") as f:
         # Load metadata (always loaded)
-        if 'metadata' in f.attrs:
+        if "metadata" in f.attrs:
             try:
-                data['_metadata'] = json.loads(f.attrs['metadata'])
+                data["_metadata"] = json.loads(str(f.attrs["metadata"]))
             except json.JSONDecodeError:
-                data['_metadata'] = {'note': 'Could not parse metadata'}
-        
+                data["_metadata"] = {"note": "Could not parse metadata"}
+
         # Load datasets and groups
         if keys is None:
             # Load everything
@@ -385,12 +385,13 @@ def load_data(filename: str, keys: Optional[list] = None) -> Dict[str, Any]:
                     data[key] = _load_item_from_hdf5(f[key])
                 else:
                     print(f"Warning: Key '{key}' not found in {filename}")
-    
+
     return data
 
 
-def _save_dict_to_group(group: h5py.Group, data: Dict[str, Any], 
-                       compression: Optional[str] = 'gzip'):
+def _save_dict_to_group(
+    group: h5py.Group, data: Dict[str, Any], compression: Optional[str] = "gzip"
+):
     """Recursively save dictionary to HDF5 group."""
     for key, value in data.items():
         if isinstance(value, np.ndarray):
@@ -398,7 +399,7 @@ def _save_dict_to_group(group: h5py.Group, data: Dict[str, Any],
         elif isinstance(value, (int, float, bool)):
             group.create_dataset(key, data=value)
         elif isinstance(value, str):
-            group.create_dataset(key, data=value.encode('utf-8') if value else b'')
+            group.create_dataset(key, data=value.encode("utf-8") if value else b"")
         elif isinstance(value, (list, tuple)):
             group.create_dataset(key, data=np.array(value), compression=compression)
         elif isinstance(value, dict):
@@ -417,8 +418,8 @@ def _load_item_from_hdf5(item) -> Any:
         data = item[()]
         # Convert bytes to string if necessary
         if isinstance(data, bytes):
-            return data.decode('utf-8')
-        elif isinstance(data, np.ndarray) and data.dtype.kind == 'S':
+            return data.decode("utf-8")
+        elif isinstance(data, np.ndarray) and data.dtype.kind == "S":
             return data.astype(str)
         return data
     elif isinstance(item, h5py.Group):
@@ -431,14 +432,14 @@ def load_selective(filename: str, keys: list) -> Dict[str, Any]:
     """
     Load only specific keys from HDF5 file (convenience wrapper for load_data).
     Metadata is always loaded automatically.
-    
+
     Args:
         filename: Name of the file (with or without .h5 extension)
         keys: List of dataset keys to load
-        
+
     Returns:
         Dictionary containing the loaded data and metadata
-        
+
     Example:
         >>> data = load_selective('results.h5', ['dataset1', 'dataset3'])
         >>> # Returns only dataset1 and dataset3, plus _metadata
@@ -451,71 +452,70 @@ def list_data_files() -> list[Path]:
     data_dir = datadir(create=False)
     if not data_dir.exists():
         return []
-    
-    return list(data_dir.glob('*.h5'))
+
+    return list(data_dir.glob("*.h5"))
 
 
 def data_info(filename: str) -> Dict[str, Any]:
     """
     Get information about a data file without loading all data.
-    
+
     Args:
         filename: Name of the file (with or without .h5 extension)
-        
+
     Returns:
         Dictionary with file information
     """
-    if not filename.endswith('.h5'):
-        filename = filename + '.h5'
-    
+    if not filename.endswith(".h5"):
+        filename = filename + ".h5"
+
     filepath = datafile(filename, create_dir=False)
-    
+
     if not filepath.exists():
         raise FileNotFoundError(f"Data file not found: {filepath}")
-    
+
     info = {
-        'filepath': str(filepath),
-        'size_bytes': filepath.stat().st_size,
-        'modified': datetime.fromtimestamp(filepath.stat().st_mtime).isoformat(),
-        'datasets': {},
-        'groups': [],
-        'metadata': {}
+        "filepath": str(filepath),
+        "size_bytes": filepath.stat().st_size,
+        "modified": datetime.fromtimestamp(filepath.stat().st_mtime).isoformat(),
+        "datasets": {},
+        "groups": [],
+        "metadata": {},
     }
-    
-    with h5py.File(filepath, 'r') as f:
+
+    with h5py.File(filepath, "r") as f:
         # Get metadata
-        if 'metadata' in f.attrs:
+        if "metadata" in f.attrs:
             try:
-                info['metadata'] = json.loads(f.attrs['metadata'])
+                info["metadata"] = json.loads(str(f.attrs["metadata"]))
             except json.JSONDecodeError:
-                info['metadata'] = {'note': 'Could not parse metadata'}
-        
+                info["metadata"] = {"note": "Could not parse metadata"}
+
         # Get dataset and group info
         def collect_info(name, obj):
             if isinstance(obj, h5py.Dataset):
-                info['datasets'][name] = {
-                    'shape': obj.shape,
-                    'dtype': str(obj.dtype),
-                    'size_bytes': obj.size * obj.dtype.itemsize
+                info["datasets"][name] = {
+                    "shape": obj.shape,
+                    "dtype": str(obj.dtype),
+                    "size_bytes": obj.size * obj.dtype.itemsize,
                 }
             elif isinstance(obj, h5py.Group):
-                info['groups'].append(name)
-        
+                info["groups"].append(name)
+
         f.visititems(collect_info)
-    
+
     return info
 
 
-def save_array(array: np.ndarray, name: str, 
-               metadata: Optional[Dict[str, Any]] = None) -> Path:
+def save_array(array: np.ndarray, name: str, metadata: Optional[Dict[str, Any]] = None) -> Path:
     """
     Convenience function to save a single numpy array.
-    
+
     Args:
         array: Numpy array to save
         name: Name for the array (used as filename)
         metadata: Optional metadata
-        
+
     Returns:
         Path to saved file
     """
@@ -525,49 +525,49 @@ def save_array(array: np.ndarray, name: str,
 def load_array(filename: str, array_name: Optional[str] = None) -> np.ndarray:
     """
     Convenience function to load a single numpy array.
-    
+
     Args:
         filename: Name of the file
         array_name: Name of the array in the file (if None, loads first array found)
-        
+
     Returns:
         Numpy array
     """
     data = load_data(filename)
-    
+
     # Remove metadata from consideration
-    arrays = {k: v for k, v in data.items() if not k.startswith('_')}
-    
+    arrays = {k: v for k, v in data.items() if not k.startswith("_")}
+
     if array_name is None:
         if len(arrays) == 0:
             raise ValueError(f"No arrays found in {filename}")
         array_name = next(iter(arrays.keys()))
-    
+
     if array_name not in arrays:
         available = list(arrays.keys())
         raise KeyError(f"Array '{array_name}' not found. Available: {available}")
-    
+
     return arrays[array_name]
 
 
 def tagsave(filename: str, data: Dict[str, Any], tags: Optional[Dict[str, Any]] = None) -> Path:
     """
     Save data with git information and custom tags (DrWatson.jl style).
-    
+
     Args:
         filename: Name of the file (with or without .h5 extension)
         data: Data dictionary to save
         tags: Additional tags to include in metadata
-        
+
     Returns:
         Path to the saved file
     """
     if tags is None:
         tags = {}
-    
+
     # Merge data and tags
     all_data = {**data}
-    
+
     # Save with git info and tags as metadata
     return save_data(all_data, filename, metadata=tags, include_git=True)
 
@@ -575,29 +575,29 @@ def tagsave(filename: str, data: Dict[str, Any], tags: Optional[Dict[str, Any]] 
 def produce_or_load(filename: str, producing_function, *args, **kwargs):
     """
     Load existing data or produce and save new data (DrWatson.jl style).
-    
+
     Args:
         filename: Name of the file to load from or save to
         producing_function: Function that produces the data if file doesn't exist
         *args: Positional arguments for producing_function
         **kwargs: Keyword arguments for producing_function
-        
+
     Returns:
         Tuple of (data_dict, existed) where existed is bool indicating if file existed
     """
-    if not filename.endswith('.h5'):
-        filename = filename + '.h5'
-    
+    if not filename.endswith(".h5"):
+        filename = filename + ".h5"
+
     filepath = datafile(filename, create_dir=False)
-    
+
     if filepath.exists():
         return load_data(filename), True
-    
+
     data = producing_function(*args, **kwargs)
-    
+
     if not isinstance(data, dict):
         raise TypeError("producing_function must return a dictionary")
-    
+
     tagsave(filename, data)
     return data, False
 
@@ -605,10 +605,10 @@ def produce_or_load(filename: str, producing_function, *args, **kwargs):
 def collect_results(folder_path: Optional[str] = None) -> list[Dict[str, Any]]:
     """
     Collect all results from .h5 files in a folder.
-    
+
     Args:
         folder_path: Path to the folder (defaults to data directory)
-        
+
     Returns:
         List of dictionaries, each containing data from one file
     """
@@ -616,19 +616,19 @@ def collect_results(folder_path: Optional[str] = None) -> list[Dict[str, Any]]:
         folder = datadir(create=False)
     else:
         folder = Path(folder_path)
-    
+
     if not folder.exists():
         return []
-    
+
     results = []
-    
-    for filepath in folder.glob('**/*.h5'):
+
+    for filepath in folder.glob("**/*.h5"):
         try:
             data = load_data(filepath.name)
             # Add the file path
-            data['_filepath'] = str(filepath)
+            data["_filepath"] = str(filepath)
             results.append(data)
         except Exception as e:
             print(f"Error loading {filepath}: {e}")
-    
+
     return results

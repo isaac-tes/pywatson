@@ -8,23 +8,61 @@ comprehensive documentation, example code, and tests.
 from . import drwatson
 from .drwatson import (
     # Path management
-    datadir, plotsdir, scriptsdir, notebooksdir, docsdir, testsdir, srcdir, projectdir,
-    datafile, plotfile, scriptfile, notebookfile, savename,
+    datadir,
+    plotsdir,
+    scriptsdir,
+    notebooksdir,
+    docsdir,
+    testsdir,
+    srcdir,
+    projectdir,
+    datafile,
+    plotfile,
+    scriptfile,
+    notebookfile,
+    savename,
     # Data management
-    save_data, load_data, save_array, load_array, data_info, list_data_files,
-    tagsave, produce_or_load, collect_results,
-
+    save_data,
+    load_data,
+    load_selective,
+    save_array,
+    load_array,
+    data_info,
+    list_data_files,
+    tagsave,
+    produce_or_load,
+    collect_results,
 )
 
 __version__ = "0.1.0"
 
 __all__ = [
     "drwatson",
-    "datadir", "plotsdir", "scriptsdir", "notebooksdir", "docsdir", "testsdir", "srcdir", "projectdir",
-    "datafile", "plotfile", "scriptfile", "notebookfile", "savename",
-    "save_data", "load_data", "save_array", "load_array", "data_info", "list_data_files",
-    "tagsave", "produce_or_load", "collect_results",
-
+    # Path management
+    "datadir",
+    "plotsdir",
+    "scriptsdir",
+    "notebooksdir",
+    "docsdir",
+    "testsdir",
+    "srcdir",
+    "projectdir",
+    "datafile",
+    "plotfile",
+    "scriptfile",
+    "notebookfile",
+    "savename",
+    # Data management
+    "save_data",
+    "load_data",
+    "load_selective",
+    "save_array",
+    "load_array",
+    "data_info",
+    "list_data_files",
+    "tagsave",
+    "produce_or_load",
+    "collect_results",
 ]
 
 from .core import create_project, ProjectScaffolder

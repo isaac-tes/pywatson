@@ -1,0 +1,94 @@
+# Makefile for {{ project_name_title }}
+#
+# Common tasks for development, testing, and maintenance.
+# Inspired by copier-uv project patterns.
+#
+# Usage:
+#   make help        Show this help message
+#   make setup       Install all dependencies
+#   make test        Run the test suite
+#   make lint        Run linters (ruff)
+#   make format      Auto-format code
+#   make clean       Remove build artifacts
+#   make data        Run data generation scripts
+
+.DEFAULT_GOAL := help
+.PHONY: help setup test lint format typecheck clean data docs build
+
+# ---------------------------------------------------------------------------
+# Development setup
+# ---------------------------------------------------------------------------
+
+help: ## Show this help message
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
+		awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+
+setup: ## Install all dependencies (including dev)
+	uv sync
+
+# ---------------------------------------------------------------------------
+# Quality assurance
+# ---------------------------------------------------------------------------
+
+test: ## Run tests with pytest
+	uv run pytest tests/ -v
+
+test-cov: ## Run tests with coverage report
+	uv run pytest tests/ -v --cov=src/{{ package_name }} --cov-report=term-missing
+
+lint: ## Run ruff linter
+	uv run ruff check src/ tests/
+
+lint-fix: ## Run ruff linter with auto-fix
+	uv run ruff check --fix src/ tests/
+
+format: ## Auto-format code with ruff
+	uv run ruff format src/ tests/
+
+format-check: ## Check formatting without modifying files
+	uv run ruff format --check src/ tests/
+
+typecheck: ## Run mypy type checker
+	uv run mypy src/{{ package_name }}/
+
+check: lint format-check typecheck test ## Run all checks (lint + format + typecheck + test)
+
+# ---------------------------------------------------------------------------
+# Data & analysis workflows
+# ---------------------------------------------------------------------------
+
+data: ## Run data generation scripts
+	uv run python scripts/generate_data.py
+
+analyze: ## Run data analysis scripts
+	uv run python scripts/analyze_data.py
+
+# ---------------------------------------------------------------------------
+# Documentation
+# ---------------------------------------------------------------------------
+
+docs: ## Build documentation (if configured)
+	@echo "Documentation build not yet configured."
+	@echo "Consider using mkdocs or sphinx."
+
+# ---------------------------------------------------------------------------
+# Build & distribution
+# ---------------------------------------------------------------------------
+
+build: ## Build distribution packages
+	uv build
+
+# ---------------------------------------------------------------------------
+# Cleanup
+# ---------------------------------------------------------------------------
+
+clean: ## Remove build artifacts, caches, and temporary files
+	rm -rf build/ dist/ *.egg-info
+	rm -rf .pytest_cache/ .mypy_cache/ .ruff_cache/
+	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+	find . -type f -name "*.pyc" -delete 2>/dev/null || true
+	@echo "Cleaned build artifacts and caches."
+
+clean-data: ## Remove all generated data files (use with caution!)
+	@echo "WARNING: This will remove all files in data/"
+	@read -p "Are you sure? [y/N] " confirm && [ "$$confirm" = "y" ] && rm -rf data/* || echo "Aborted."

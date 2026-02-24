@@ -1,0 +1,71 @@
+# Contributing to {{ project_name_title }}
+
+Thank you for your interest in contributing! This document provides
+guidelines and instructions for contributing to this project.
+
+## Development Setup
+
+1. **Clone the repository:**
+   ```bash
+   git clone <repository-url>
+   cd {{ project_name }}
+   ```
+
+2. **Install dependencies (requires [uv](https://docs.astral.sh/uv/)):**
+   ```bash
+   uv sync
+   ```
+
+3. **Verify the setup:**
+   ```bash
+   uv run pytest          # Run tests
+   uv run ruff check src/ # Lint
+   ```
+
+## Development Workflow
+
+1. Create a new branch for your feature or fix:
+   ```bash
+   git checkout -b feat/my-feature
+   ```
+
+2. Make your changes and add tests for new functionality.
+
+3. Run the quality checks:
+   ```bash
+   uv run ruff check src/ tests/      # Lint
+   uv run ruff format src/ tests/     # Format
+   uv run pytest tests/ -v            # Test
+   ```
+
+4. Commit with a descriptive message following
+   [Conventional Commits](https://www.conventionalcommits.org/):
+   ```
+   feat: add new analysis function
+   fix: correct parameter handling in save_data
+   docs: update README with usage examples
+   ```
+
+5. Push and open a pull request.
+
+## Code Style
+
+- **Formatting**: ruff (line length 99)
+- **Docstrings**: Google style
+- **Type annotations**: required on public function signatures
+- **Imports**: stdlib -> third-party -> local (enforced by ruff/isort)
+
+## Data Conventions
+
+This project follows [DrWatson.jl](https://juliadynamics.github.io/DrWatson.jl/stable/)
+conventions for data management:
+
+- Raw experimental data goes in `data/exp_raw/`
+- Processed experimental data goes in `data/exp_pro/`
+- Simulation output goes in `data/sims/`
+- Use `save_data()` / `load_data()` for HDF5 files with automatic metadata
+- Use `savename()` to create deterministic filenames from parameter dictionaries
+
+## Questions?
+
+Open an issue on the repository if you have questions or run into problems.

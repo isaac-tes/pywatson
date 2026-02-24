@@ -1,0 +1,57 @@
+# Ruff configuration for {{ project_name_title }}
+#
+# Ruff is an extremely fast Python linter and formatter.
+# Docs: https://docs.astral.sh/ruff/
+#
+# Usage:
+#   uv run ruff check src/ tests/        # Lint
+#   uv run ruff check --fix src/ tests/  # Lint with auto-fix
+#   uv run ruff format src/ tests/       # Format
+
+# Maximum line length (matching scientific code conventions)
+line-length = 99
+
+# Target Python version
+target-version = "py312"
+
+[lint]
+# Enable a broad set of rules, disable selectively below
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # Pyflakes
+    "I",    # isort (import sorting)
+    "N",    # pep8-naming
+    "D",    # pydocstyle
+    "UP",   # pyupgrade (modernise syntax)
+    "B",    # flake8-bugbear
+    "SIM",  # flake8-simplify
+    "RUF",  # Ruff-specific rules
+]
+
+ignore = [
+    "D100",  # Missing docstring in public module
+    "D104",  # Missing docstring in public package
+    "D203",  # One blank line before class docstring (conflicts with D211)
+    "D213",  # Multi-line docstring summary on second line (conflicts with D212)
+]
+
+[lint.per-file-ignores]
+# Relax rules for tests — allow assertions, magic numbers, etc.
+"tests/**/*.py" = ["D", "S101"]
+# Scripts are more relaxed
+"scripts/**/*.py" = ["D", "T201"]
+
+[lint.isort]
+# Group imports: stdlib -> third-party -> local
+known-first-party = ["{{ package_name }}"]
+
+[lint.pydocstyle]
+# Use Google-style docstrings
+convention = "google"
+
+[format]
+# Use double quotes for strings
+quote-style = "double"
+# Use trailing commas in multi-line structures
+skip-magic-trailing-comma = false

@@ -2,183 +2,189 @@
 
 {{ description }}
 
-## Project Structure
+> Created with [PyWatson](https://github.com/isaac-tes/pywatson) — a Python
+> scientific project management tool inspired by
+> [DrWatson.jl](https://juliadynamics.github.io/DrWatson.jl/stable/).
 
-This project follows a structured organization inspired by DrWatson.jl:
+## Project Structure
 
 ```
 {{ project_name }}/
-├── _research/           # WIP scripts, code, notes, and alpha-stage work
-│   └── tmp/            # Temporary data folder
-├── src/                 # Source code for the library
+{% if project_type == "full" -%}
+├── .github/workflows/   # CI configuration (GitHub Actions)
+{% endif -%}
+├── _research/           # WIP scripts, code, notes, alpha-stage work
+│   └── tmp/             # Temporary data (git-ignored)
+├── src/
 │   └── {{ package_name }}/
-├── scripts/             # Standalone scripts and utilities
-├── notebooks/           # Jupyter notebooks for analysis and examples
-├── tests/               # Unit tests
+│       ├── __init__.py  # Public API
+│       ├── core.py      # Project-specific functions
+│       └── drwatson.py  # Path management & HDF5 data utilities
+├── scripts/             # Standalone scripts (data generation, analysis)
+├── notebooks/           # Jupyter notebooks for exploration
+├── tests/               # pytest test suite
 ├── plots/               # Generated plots and figures
-├── data/                # Data files (raw and processed)
+{% if project_type == "default" or project_type == "full" -%}
+├── data/
+│   ├── sims/            # Simulation output
+│   ├── exp_raw/         # Raw experimental data
+│   └── exp_pro/         # Processed experimental data
+{% else -%}
+├── data/                # Data files
+{% endif -%}
 ├── docs/                # Documentation
-├── pyproject.toml       # Project configuration and dependencies
-└── README.md           # This file
+{% if project_type == "full" -%}
+├── config/              # Tool configuration (ruff, pytest, etc.)
+├── Makefile             # Common tasks (make test, make lint, ...)
+├── CONTRIBUTING.md      # Contribution guidelines
+├── CHANGELOG.md         # Release history
+{% endif -%}
+├── pyproject.toml       # Project metadata and dependencies
+└── README.md            # This file
 ```
 
-## Installation and Setup
-
-This project uses [uv](https://docs.astral.sh/uv/) for dependency management and virtual environment handling. Follow these steps to set up the project:
+## Quick Start
 
 ### Prerequisites
 
-- Python 3.9 or higher
+- Python 3.12+
 - [uv](https://docs.astral.sh/uv/) package manager
 
-Install uv if you haven't already:
 ```bash
-# On macOS/Linux
+# Install uv (if not already installed)
 curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# On Windows
-powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
-### Setting up the project
-
-1. **Clone the repository:**
-   ```bash
-   git clone <repository-url>
-   cd {{ project_name }}
-   ```
-
-2. **Install dependencies and activate the environment:**
-   ```bash
-   # This will create a virtual environment and install all dependencies
-   uv sync
-   ```
-
-3. **Activate the virtual environment:**
-   ```bash
-   # Activate the environment
-   source .venv/bin/activate  # On Unix/macOS
-   # or
-   .venv\Scripts\activate     # On Windows
-   ```
-
-### Environment Management
-
-#### Activating the Environment
-```bash
-# Method 1: Traditional activation
-source .venv/bin/activate  # Unix/macOS
-.venv\Scripts\activate     # Windows
-
-# Method 2: Using uv run (runs commands in the project environment)
-uv run python script.py
-uv run jupyter notebook
-```
-
-#### Deactivating the Environment
-```bash
-deactivate
-```
-
-## Quick Guide to uv
-
-### Basic Commands
-
-- **Create a new project:** `uv init --lib project-name`
-- **Add dependencies:** `uv add package-name`
-- **Add development dependencies:** `uv add --group dev package-name`
-- **Remove dependencies:** `uv remove package-name`
-- **Install project dependencies:** `uv sync`
-- **Run commands in the project environment:** `uv run command`
-- **Show project info:** `uv tree`
-- **Lock dependencies:** `uv lock`
-
-### Working with Dependencies
+### Setup
 
 ```bash
-# Add a specific version
-uv add "numpy==1.24.0"
-
-# Add from PyPI
-uv add requests
-
-# Add development dependencies
-uv add --group dev pytest
-
-# Install from requirements.txt
-uv add -r requirements.txt
+git clone <repository-url>
+cd {{ project_name }}
+uv sync                    # Install all dependencies
+uv run pytest              # Verify everything works
 ```
 
 ### Running Code
 
 ```bash
-# Run Python scripts
-uv run python src/your_script.py
-
-# Run Jupyter notebooks
-uv run jupyter notebook
+# Run scripts
+uv run python scripts/generate_data.py
+uv run python scripts/analyze_data.py
 
 # Run tests
-uv run pytest
-
-# Run any command in the virtual environment
-uv run <command>
-```
-
-## Usage
-
-### Running the Example Analysis
-```bash
-uv run python scripts/example_analysis.py
-```
-
-### Running Jupyter Notebooks
-```bash
-uv run jupyter notebook
-# Navigate to the notebooks/ directory for examples
-```
-
-### Running Tests
-```bash
 uv run pytest tests/ -v
+
+# Start Jupyter
+uv run jupyter notebook
 ```
 
-### Using the Library
+## DrWatson-Style Data Management
+
+This project includes `drwatson.py`, which provides Julia's DrWatson.jl-style
+utilities for reproducible scientific computing in Python.
+
+### Path Management
 
 ```python
-from {{ package_name }} import create_example_data, analyze_data
+from {{ package_name }} import datadir, plotsdir, datafile, savename
 
-# ...
+# Get directory paths (always relative to project root)
+datadir()              # -> Path("<project>/data")
+plotsdir()             # -> Path("<project>/plots")
+
+# Get file paths
+datafile("results.h5") # -> Path("<project>/data/results.h5")
+
+# Create deterministic filenames from parameters
+params = {"alpha": 0.5, "N": 100, "method": "euler"}
+savename(params, "h5")
+# -> "N=100_alpha=0.5_method=euler.h5"
+```
+
+### Saving & Loading Data (HDF5)
+
+```python
+from {{ package_name }} import save_data, load_data, load_selective
+import numpy as np
+
+# Save data with automatic metadata (git commit, timestamp)
+data = {
+    "temperature": np.random.randn(1000),
+    "pressure": np.random.randn(1000),
+}
+save_data(data, "experiment_001", metadata={"run": 1, "sensor": "A"})
+
+# Load everything
+result = load_data("experiment_001")
+print(result["temperature"])
+print(result["_metadata"])  # Includes git info, timestamp, custom metadata
+
+# Load only specific datasets
+partial = load_selective("experiment_001", keys=["temperature"])
+```
+
+### Smart Caching with `produce_or_load`
+
+```python
+from {{ package_name }} import produce_or_load
+
+def expensive_simulation(params):
+    """Run a computationally expensive simulation."""
+    # ... your simulation code ...
+    return {"result": computed_data}
+
+params = {"N": 1000, "dt": 0.01}
+
+# First call: runs the simulation, saves result to data/
+# Second call: loads cached result (no recomputation)
+data, filepath = produce_or_load(expensive_simulation, params)
 ```
 
 ## Development
 
-### Installing in Development Mode
-The package is automatically installed in development mode when you run `uv sync`. Any changes to the source code will be immediately available.
+### Dependencies
 
-### Adding New Dependencies
 ```bash
-# Add a new runtime dependency
-uv add new-package
-
-# Add a new development dependency
-uv add --group dev new-dev-package
+uv add package-name              # Add runtime dependency
+uv add --group dev package-name  # Add dev dependency
+uv sync                          # Reinstall after changes
 ```
 
+{% if project_type == "full" -%}
+### Quality Checks
 
-## Contributing
+```bash
+make lint        # Run ruff linter
+make format      # Auto-format code
+make typecheck   # Run mypy
+make test        # Run pytest
+make check       # Run all checks
+```
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests for new functionality
-5. Run the test suite: `uv run pytest`
-6. Submit a pull request
+{% else -%}
+### Quality Checks
 
+```bash
+uv run ruff check src/ tests/     # Lint
+uv run ruff format src/ tests/    # Format
+uv run pytest tests/ -v           # Test
+```
+
+{% endif -%}
 ## Author
 
-**{{ author_name }}** - {{ author_email }}
+**{{ author_name }}** — {{ author_email }}
 
 ## License
 
+{% if license_type == "MIT" -%}
+This project is licensed under the MIT License — see [LICENSE](LICENSE) for details.
+{% elif license_type == "BSD-3-Clause" -%}
+This project is licensed under the BSD 3-Clause License — see [LICENSE](LICENSE) for details.
+{% elif license_type == "Apache-2.0" -%}
+This project is licensed under the Apache License 2.0 — see [LICENSE](LICENSE) for details.
+{% elif license_type == "ISC" -%}
+This project is licensed under the ISC License — see [LICENSE](LICENSE) for details.
+{% else -%}
 [Add your license information here]
+{% endif -%}

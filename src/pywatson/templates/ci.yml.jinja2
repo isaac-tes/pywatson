@@ -1,0 +1,75 @@
+# GitHub Actions CI for {{ project_name_title }}
+#
+# Runs linting, type checking, and tests on every push and pull request.
+# Inspired by copier-uv CI patterns.
+
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Quality checks
+  # ---------------------------------------------------------------------------
+  quality:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Lint with ruff
+        run: uv run ruff check src/ tests/
+
+      - name: Check formatting with ruff
+        run: uv run ruff format --check src/ tests/
+
+      - name: Type check with mypy
+        run: uv run mypy src/{{ package_name }}/
+
+  # ---------------------------------------------------------------------------
+  # Tests
+  # ---------------------------------------------------------------------------
+  tests:
+    runs-on: {% raw %}${{ matrix.os }}{% endraw %}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ["3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+
+      - name: Set up Python {% raw %}${{ matrix.python-version }}{% endraw %}
+        uses: actions/setup-python@v5
+        with:
+          python-version: {% raw %}${{ matrix.python-version }}{% endraw %}
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run tests
+        run: uv run pytest tests/ -v --cov=src/{{ package_name }} --cov-report=term-missing

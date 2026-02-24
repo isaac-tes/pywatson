@@ -15,8 +15,9 @@ from .drwatson import (
     datadir, plotsdir, scriptsdir, notebooksdir, docsdir, testsdir, srcdir, projectdir,
     datafile, plotfile, scriptfile, notebookfile, savename,
     # Data management
-    save_data, load_data, save_array, load_array, data_info, list_data_files,
-    tagsave, produce_or_load, collect_results
+    save_data, load_data, load_selective, save_array, load_array,
+    data_info, list_data_files,
+    tagsave, produce_or_load, collect_results,
 )
 
 __version__ = "0.1.0"
@@ -25,13 +26,15 @@ __email__ = "{{ author_email }}"
 
 __all__ = [
     "hello_world",
-    "create_example_data", 
+    "create_example_data",
     "analyze_data",
     # Path management
-    "datadir", "plotsdir", "scriptsdir", "notebooksdir", "docsdir", "testsdir", "srcdir", "projectdir",
+    "datadir", "plotsdir", "scriptsdir", "notebooksdir", "docsdir",
+    "testsdir", "srcdir", "projectdir",
     "datafile", "plotfile", "scriptfile", "notebookfile", "savename",
     # Data management
-    "save_data", "load_data", "save_array", "load_array", "data_info", "list_data_files",
+    "save_data", "load_data", "load_selective", "save_array", "load_array",
+    "data_info", "list_data_files",
     "tagsave", "produce_or_load", "collect_results",
 ]
 

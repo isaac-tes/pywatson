@@ -1,16 +1,27 @@
 [project]
 name = "pywatson"
 version = "0.1.0"
-description = "A Python scientific project managment tool inspired by DrWatson.jl for creating well-structured scientific computing projects"
+description = "A Python scientific project management tool inspired by DrWatson.jl for creating well-structured, reproducible scientific computing projects"
 readme = "README.md"
+license = {text = "MIT"}
 authors = [
     { name = "isaac-tes", email = "i.tesfaye@tu-berlin.de" }
 ]
 requires-python = ">=3.12"
+keywords = ["scientific-computing", "project-management", "drwatson", "reproducibility", "hdf5"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering",
+]
 dependencies = [
     "click>=8.3.0",
     "h5py>=3.14.0",
     "jinja2>=3.1.6",
+    "numpy>=1.24.0",
     "pyyaml>=6.0.3",
     "rich>=14.1.0",
 ]
@@ -22,8 +33,59 @@ build-backend = "uv_build"
 [dependency-groups]
 dev = [
     "pytest>=8.4.2",
+    "ruff>=0.8.0",
+    "mypy>=1.13.0",
 ]
-
 
 [project.scripts]
 drwatson-init = "pywatson.core:create_project"
+
+# ---------------------------------------------------------------------------
+# Ruff — linter & formatter configuration
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 99
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "F",    # pyflakes
+    "W",    # pycodestyle warnings
+    "I",    # isort (import sorting)
+    "UP",   # pyupgrade (modernize syntax)
+    "N",    # pep8-naming
+    "D",    # pydocstyle (docstring conventions)
+]
+ignore = [
+    "D100",   # Missing docstring in public module (too noisy for templates)
+    "D104",   # Missing docstring in public package
+    "D203",   # One blank line before class docstring (conflicts with D211)
+    "D213",   # Multi-line docstring summary on second line (conflicts with D212)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["pywatson"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+# ---------------------------------------------------------------------------
+# Mypy — static type checking
+# ---------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.12"
+strict_optional = true
+warn_unused_configs = true
+warn_return_any = true
+warn_unused_ignores = true
+disallow_untyped_defs = false          # Allow gradual adoption
+
+# ---------------------------------------------------------------------------
+# Pytest
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
