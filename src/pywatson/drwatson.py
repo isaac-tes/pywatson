@@ -288,7 +288,7 @@ def save_data(data: Dict[str, Any], filename: str,
     Returns:
         Path to the saved file
     """
-    if not filename.endswith('.h5'):
+    if not filename.suffix=='.h5':
         filename = filename + '.h5'
     
     filepath = datafile(filename)
@@ -343,17 +343,19 @@ def save_data(data: Dict[str, Any], filename: str,
     return filepath
 
 
-def load_data(filename: str) -> Dict[str, Any]:
+def load_data(filename: str, keys: Optional[list] = None) -> Dict[str, Any]:
     """
     Load data from HDF5 file in the data directory.
     
     Args:
         filename: Name of the file (with or without .h5 extension)
+        keys: Optional list of dataset keys to load. If None, loads all datasets.
+              Metadata is always loaded regardless of this parameter.
         
     Returns:
         Dictionary containing the loaded data and metadata
     """
-    if not filename.endswith('.h5'):
+    if not filename.suffix=='.h5':
         filename = filename + '.h5'
     
     filepath = datafile(filename, create_dir=False)
@@ -364,7 +366,7 @@ def load_data(filename: str) -> Dict[str, Any]:
     data = {}
     
     with h5py.File(filepath, 'r') as f:
-        # Load metadata
+        # Load metadata (always loaded)
         if 'metadata' in f.attrs:
             try:
                 data['_metadata'] = json.loads(f.attrs['metadata'])
@@ -372,8 +374,17 @@ def load_data(filename: str) -> Dict[str, Any]:
                 data['_metadata'] = {'note': 'Could not parse metadata'}
         
         # Load datasets and groups
-        for key in f.keys():
-            data[key] = _load_item_from_hdf5(f[key])
+        if keys is None:
+            # Load everything
+            for key in f.keys():
+                data[key] = _load_item_from_hdf5(f[key])
+        else:
+            # Load only specified keys
+            for key in keys:
+                if key in f:
+                    data[key] = _load_item_from_hdf5(f[key])
+                else:
+                    print(f"Warning: Key '{key}' not found in {filename}")
     
     return data
 
@@ -414,6 +425,25 @@ def _load_item_from_hdf5(item) -> Any:
         return {key: _load_item_from_hdf5(item[key]) for key in item.keys()}
     else:
         return item
+
+
+def load_selective(filename: str, keys: list) -> Dict[str, Any]:
+    """
+    Load only specific keys from HDF5 file (convenience wrapper for load_data).
+    Metadata is always loaded automatically.
+    
+    Args:
+        filename: Name of the file (with or without .h5 extension)
+        keys: List of dataset keys to load
+        
+    Returns:
+        Dictionary containing the loaded data and metadata
+        
+    Example:
+        >>> data = load_selective('results.h5', ['dataset1', 'dataset3'])
+        >>> # Returns only dataset1 and dataset3, plus _metadata
+    """
+    return load_data(filename, keys=keys)
 
 
 def list_data_files() -> list[Path]:
