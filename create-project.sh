@@ -17,6 +17,13 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$SCRIPT_DIR"
 ORIGINAL_CWD="$(pwd)"
 
+# Global flags
+YES=0
+if [[ "$1" == "-y" || "$1" == "--yes" ]]; then
+    YES=1
+    shift
+fi
+
 echo "PyWatson - Project Creator"
 echo "========================================"
 
@@ -148,7 +155,12 @@ create_project_interactive() {
     echo "  Path:     $project_path"
     echo
 
-    read -p "Continue? (Y/n): " confirm
+    if [[ "$YES" -eq 1 ]]; then
+        confirm="y"
+    else
+        read -p "Continue? (Y/n): " confirm
+    fi
+
     if [[ -n "$confirm" && "$confirm" != [yY] ]]; then
         echo "Aborted"
         exit 0
@@ -261,12 +273,16 @@ case "${1:-}" in
         target_dir="$ORIGINAL_CWD/$project_name"
         force_flag=""
         if [[ -d "$target_dir" ]]; then
-            read -p "Directory $target_dir already exists. Overwrite? (y/N): " overwrite_choice
-            if [[ "$overwrite_choice" == [yY] ]]; then
+            if [[ "$YES" -eq 1 ]]; then
                 force_flag="--force"
             else
-                echo "Aborted"
-                exit 0
+                read -p "Directory $target_dir already exists. Overwrite? (y/N): " overwrite_choice
+                if [[ "$overwrite_choice" == [yY] ]]; then
+                    force_flag="--force"
+                else
+                    echo "Aborted"
+                    exit 0
+                fi
             fi
         fi
 
