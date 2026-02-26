@@ -72,6 +72,41 @@ class TestProjectScaffolder:
         with pytest.raises(ValueError, match="Unknown license type"):
             ProjectScaffolder("test-project", project_path, license_type="WTFPL")
 
+    def test_scaffolder_new_params_defaults(self, scaffolder):
+        """Test that new params (python_version, linting_mode, type_checker) default correctly."""
+        assert scaffolder.python_version == "3.12"
+        assert scaffolder.linting_mode == "minimal"
+        assert scaffolder.type_checker == "ty"
+
+    def test_scaffolder_new_params_custom(self, temp_project_dir):
+        """Test scaffolder with custom python_version, linting_mode, type_checker."""
+        project_path = temp_project_dir / "custom_params"
+        project_path.mkdir()
+        s = ProjectScaffolder(
+            "custom-project",
+            project_path,
+            python_version="3.11",
+            linting_mode="strict",
+            type_checker="mypy",
+        )
+        assert s.python_version == "3.11"
+        assert s.linting_mode == "strict"
+        assert s.type_checker == "mypy"
+
+    def test_invalid_linting_mode_raises(self, temp_project_dir):
+        """Test that an invalid linting mode raises ValueError."""
+        project_path = temp_project_dir / "bad_linting"
+        project_path.mkdir()
+        with pytest.raises(ValueError, match="Unknown linting mode"):
+            ProjectScaffolder("test-project", project_path, linting_mode="ultra")
+
+    def test_invalid_type_checker_raises(self, temp_project_dir):
+        """Test that an invalid type checker raises ValueError."""
+        project_path = temp_project_dir / "bad_checker"
+        project_path.mkdir()
+        with pytest.raises(ValueError, match="Unknown type checker"):
+            ProjectScaffolder("test-project", project_path, type_checker="pyright")
+
     def test_package_name_sanitization(self, temp_project_dir):
         """Test that package names are sanitized correctly."""
         test_cases = [
@@ -209,13 +244,13 @@ class TestProjectScaffolder:
         src_dir = scaffolder.project_path / "src" / scaffolder.package_name
         assert (src_dir / "__init__.py").exists()
         assert (src_dir / "core.py").exists()
-        assert (src_dir / "drwatson.py").exists()
+        assert (src_dir / "pywatson_utils.py").exists()
 
         init_content = (src_dir / "__init__.py").read_text()
         assert "Test Author" in init_content
         assert "test@example.com" in init_content
         assert "from .core import" in init_content
-        assert "from .drwatson import" in init_content
+        assert "from .pywatson_utils import" in init_content
         assert "load_selective" in init_content
 
         core_content = (src_dir / "core.py").read_text()
@@ -246,6 +281,7 @@ class TestProjectScaffolder:
         scripts_dir = scaffolder.project_path / "scripts"
         assert (scripts_dir / "generate_data.py").exists()
         assert (scripts_dir / "analyze_data.py").exists()
+        assert (scripts_dir / "pywatson_showcase.py").exists()
 
         generate_content = (scripts_dir / "generate_data.py").read_text()
         assert "def main():" in generate_content
@@ -256,6 +292,11 @@ class TestProjectScaffolder:
         assert "def main():" in analyze_content
         assert "load_data" in analyze_content
         assert scaffolder.package_name in analyze_content
+
+        showcase_content = (scripts_dir / "pywatson_showcase.py").read_text()
+        assert "produce_or_load" in showcase_content
+        assert "savename" in showcase_content
+        assert "run_heat_diffusion" in showcase_content
 
     # ------------------------------------------------------------------
     # .gitignore
@@ -347,18 +388,20 @@ class TestProjectScaffolder:
         assert "ruff" in ci
 
     # ------------------------------------------------------------------
-    # Copy drwatson.py
+    # Copy pywatson_utils.py
     # ------------------------------------------------------------------
 
-    def test_copy_drwatson_file(self, scaffolder):
-        """Test that drwatson.py is copied correctly."""
+    def test_copy_utils_file(self, scaffolder):
+        """Test that pywatson_utils.py is copied correctly."""
         scaffolder.create_project_structure()
-        scaffolder._copy_drwatson_file()
+        scaffolder._copy_utils_file()
 
-        drwatson_path = scaffolder.project_path / "src" / scaffolder.package_name / "drwatson.py"
-        assert drwatson_path.exists()
+        utils_path = (
+            scaffolder.project_path / "src" / scaffolder.package_name / "pywatson_utils.py"
+        )
+        assert utils_path.exists()
 
-        content = drwatson_path.read_text()
+        content = utils_path.read_text()
         assert "def datadir(" in content
         assert "def save_data(" in content
         assert "def load_data(" in content
@@ -413,11 +456,12 @@ class TestFullProjectGeneration:
         expected_files = [
             "src/full_default/__init__.py",
             "src/full_default/core.py",
-            "src/full_default/drwatson.py",
+            "src/full_default/pywatson_utils.py",
             "tests/__init__.py",
             "tests/test_core.py",
             "scripts/generate_data.py",
             "scripts/analyze_data.py",
+            "scripts/pywatson_showcase.py",
             ".gitignore",
             "LICENSE",
         ]

@@ -1,0 +1,173 @@
+"""
+PyWatson API Showcase — 1-D Heat Diffusion Simulation
+======================================================
+
+Demonstrates all six core PyWatson functions:
+
+  1. savename          — build deterministic filenames from parameter dicts
+  2. save_data         — save data to HDF5 (git info opt-in)
+  3. tagsave           — save with automatic git state capture
+  4. load_data         — load an entire HDF5 file
+  5. load_selective    — load only chosen datasets
+  6. produce_or_load   — smart cache: run once, reload on repeat calls
+
+Physics background
+------------------
+We solve the 1-D heat equation  ∂T/∂t = α ∂²T/∂x²  on [0, 1]
+with Dirichlet boundary conditions T(0) = 0, T(1) = 1 and a
+step-function initial condition.  An explicit Euler finite-difference
+scheme (forward-in-time, central-in-space) is used.
+"""
+
+import numpy as np
+
+from {{ package_name }} import (
+    savename,
+    save_data,
+    tagsave,
+    load_data,
+    load_selective,
+    produce_or_load,
+    datadir,
+)
+
+
+# ---------------------------------------------------------------------------
+# Simulation
+# ---------------------------------------------------------------------------
+
+def run_heat_diffusion(nx: int = 60, alpha: float = 0.01, nt: int = 500) -> dict:
+    """Solve the 1-D heat equation with explicit Euler finite differences.
+
+    Args:
+        nx: Number of spatial grid points.
+        alpha: Thermal diffusivity (dimensionless).
+        nt: Number of time steps.
+
+    Returns:
+        Dictionary with arrays ``x``, ``T_initial``, ``T_final``, ``T_history``
+        and scalar metadata ``nx``, ``alpha``, ``nt``, ``dx``, ``dt``.
+    """
+    dx = 1.0 / (nx - 1)
+    # CFL-stable time step: dt < dx² / (2 alpha)
+    dt = 0.4 * dx**2 / alpha
+
+    x = np.linspace(0.0, 1.0, nx)
+
+    # Initial condition: step at midpoint
+    T = np.where(x < 0.5, 0.0, 1.0).astype(float)
+    T[0] = 0.0   # left BC
+    T[-1] = 1.0  # right BC
+
+    T_initial = T.copy()
+    history_stride = max(1, nt // 20)   # store ~20 snapshots
+    snapshots = [T.copy()]
+
+    for step in range(nt):
+        T_new = T.copy()
+        T_new[1:-1] = T[1:-1] + alpha * dt / dx**2 * (T[2:] - 2 * T[1:-1] + T[:-2])
+        T_new[0] = 0.0
+        T_new[-1] = 1.0
+        T = T_new
+        if (step + 1) % history_stride == 0:
+            snapshots.append(T.copy())
+
+    return {
+        "x": x,
+        "T_initial": T_initial,
+        "T_final": T.copy(),
+        "T_history": np.array(snapshots),
+        "nx": nx,
+        "alpha": alpha,
+        "nt": nt,
+        "dx": dx,
+        "dt": dt,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Showcase
+# ---------------------------------------------------------------------------
+
+def main() -> None:
+    """Run the PyWatson API showcase end-to-end."""
+    print("=" * 60)
+    print("  PyWatson API Showcase — 1-D Heat Diffusion")
+    print("=" * 60)
+
+    params = {"nx": 60, "alpha": 0.01, "nt": 500}
+
+    # ------------------------------------------------------------------
+    # 1. savename — deterministic filename from a parameter dictionary
+    # ------------------------------------------------------------------
+    print("\n[1] savename")
+    fname = savename(params, ".h5")
+    print(f"    savename(params, '.h5') -> {fname!r}")
+
+    # ------------------------------------------------------------------
+    # 2. save_data — lightweight save without git overhead
+    # ------------------------------------------------------------------
+    print("\n[2] save_data  (include_git=False by default)")
+    quick_data = {"x": np.linspace(0, 1, 10), "note": "quick sanity check"}
+    save_data(quick_data, "heat_quick_check", metadata={"purpose": "showcase"})
+    print(f"    saved to {datadir() / 'heat_quick_check.h5'}")
+
+    # ------------------------------------------------------------------
+    # 3. tagsave — always captures git state
+    # ------------------------------------------------------------------
+    print("\n[3] tagsave  (always captures git state)")
+    sim_data = run_heat_diffusion(**params)
+    tagged_path = tagsave(fname, sim_data, tags=params)
+    print(f"    saved to {tagged_path}")
+
+    # ------------------------------------------------------------------
+    # 4. load_data — load everything from an HDF5 file
+    # ------------------------------------------------------------------
+    print("\n[4] load_data")
+    loaded = load_data(fname)
+    keys_loaded = [k for k in loaded if not k.startswith("_")]
+    print(f"    keys: {keys_loaded}")
+    print(f"    T_final[0]  = {loaded['T_final'][0]:.4f}  (BC: 0.0)")
+    print(f"    T_final[-1] = {loaded['T_final'][-1]:.4f}  (BC: 1.0)")
+    if "_metadata" in loaded:
+        meta = loaded["_metadata"]
+        # print all of metadata for demonstration
+        print("    git-metadata:")
+        for key, value in meta.items():
+            print(f"    {key} = {value}")
+
+    # ------------------------------------------------------------------
+    # 5. load_selective — load only the fields you need
+    # ------------------------------------------------------------------
+    print("\n[5] load_selective")
+    partial = load_selective(fname, keys=["x", "T_final"])
+    print(f"    requested keys + metadata: {list(partial.keys())}")
+    print(f"    x shape     : {partial['x'].shape}")
+    print(f"    T_final shape: {partial['T_final'].shape}")
+
+    # ------------------------------------------------------------------
+    # 6. produce_or_load — smart cache
+    # ------------------------------------------------------------------
+    print("\n[6] produce_or_load")
+    cache_fname = savename({"nx": 40, "alpha": 0.005, "nt": 300}, ".h5")
+
+    result, existed = produce_or_load(
+        cache_fname, run_heat_diffusion, nx=40, alpha=0.005, nt=300
+    )
+    print(f"    file existed? {existed}  (False = just computed, True = loaded from cache)")
+    print(f"    T_final shape: {result['T_final'].shape}")
+
+    # Second call — should load from cache
+    result2, existed2 = produce_or_load(
+        cache_fname, run_heat_diffusion, nx=40, alpha=0.005, nt=300
+    )
+    print(f"    second call, existed? {existed2}  (should be True)")
+
+    # ------------------------------------------------------------------
+    print("\n" + "=" * 60)
+    print("  All six functions exercised successfully.")
+    print("=" * 60)
+
+
+if __name__ == "__main__":
+    main()

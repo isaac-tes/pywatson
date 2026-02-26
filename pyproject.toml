@@ -35,10 +35,11 @@ dev = [
     "pytest>=8.4.2",
     "ruff>=0.8.0",
     "mypy>=1.13.0",
+    "ty>=0.0.1",
 ]
 
 [project.scripts]
-drwatson-init = "pywatson.core:create_project"
+pywatson-init = "pywatson.core:create_project"
 
 # ---------------------------------------------------------------------------
 # Ruff — linter & formatter configuration

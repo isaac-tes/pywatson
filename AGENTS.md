@@ -12,7 +12,7 @@ management, HDF5 data handling, parameter-based filenames, and smart caching.
 - **Package manager**: [uv](https://docs.astral.sh/uv/) (not pip, not conda)
 - **Build backend**: `uv_build`
 - **Layout**: `src/` layout — the package lives at `src/pywatson/`
-- **Entry point**: `drwatson-init` CLI → `pywatson.core:create_project`
+- **Entry point**: `pywatson-init` CLI → `pywatson.core:create_project`
 
 ## Build / Lint / Test Commands
 
@@ -55,8 +55,8 @@ uv run mypy src/pywatson/
 uv build
 
 # Run the CLI
-uv run drwatson-init --help
-uv run drwatson-init PROJECT_NAME --author-name "Name" --author-email "e@x.com" --description "desc"
+uv run pywatson-init --help
+uv run pywatson-init PROJECT_NAME --author-name "Name" --author-email "e@x.com" --description "desc"
 ```
 
 ## Project Layout
@@ -64,9 +64,9 @@ uv run drwatson-init PROJECT_NAME --author-name "Name" --author-email "e@x.com" 
 ```
 pywatson/
 ├── src/pywatson/              # Main package (src-layout)
-│   ├── __init__.py            # Public API re-exports from core + drwatson
+│   ├── __init__.py            # Public API re-exports from core + utils
 │   ├── core.py                # ProjectScaffolder class + Click CLI
-│   ├── drwatson.py            # Path management, HDF5 data, git tracking
+│   ├── utils.py               # Path management, HDF5 data, git tracking
 │   ├── py.typed               # PEP 561 typed-package marker
 │   └── templates/             # Jinja2 templates for generated projects
 │       ├── *.py.jinja2        # Python file templates
@@ -95,7 +95,7 @@ pywatson/
   import click
   import numpy as np
 
-  from .drwatson import datadir, save_data
+  from .utils import datadir, save_data
   ```
 
 ### Formatting
@@ -122,7 +122,7 @@ pywatson/
 | Module constants     | `UPPER_SNAKE_CASE` | `_PROJECT_ROOT` (private constant)         |
 | Test classes         | `TestXxx`          | `TestProjectScaffolder`                    |
 | Test functions       | `test_xxx`         | `test_scaffolder_initialization`           |
-| Source files         | `snake_case.py`    | `core.py`, `drwatson.py`                   |
+| Source files         | `snake_case.py`    | `core.py`, `utils.py`                      |
 | Template files       | `name.ext.jinja2`  | `core.py.jinja2`, `README.md.jinja2`       |
 
 ### Docstrings — Google Style
@@ -176,9 +176,9 @@ def save_data(data: dict[str, Any], filename: str,
 
 ## Key Design Decisions
 
-- `drwatson.py` is **copied verbatim** into generated projects (not templated)
+- `utils.py` is **copied verbatim** into generated projects as `pywatson_utils.py` (not templated)
 - The `_PROJECT_ROOT` global caches the project root to avoid repeated filesystem walks
 - HDF5 is the default data format (via h5py); metadata stored as JSON in HDF5 attributes
-- Git commit info is automatically embedded in saved data files
+- `save_data` has `include_git=False` by default; `tagsave` always captures git state
 - `produce_or_load()` implements DrWatson.jl-style smart caching
 - `savename()` creates deterministic filenames from parameter dictionaries

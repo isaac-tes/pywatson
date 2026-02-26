@@ -1,8 +1,19 @@
 """
-PyWatson utilities - Combined path and data management.
+PyWatson utilities — path management and HDF5 data handling.
 
-This module provides utilities for path management and HDF5 data handling
-with DrWatson.jl-inspired features including git tracking and smart caching.
+Provides DrWatson.jl-inspired helpers for:
+  - Path management  : datadir(), plotsdir(), savename(), …
+  - HDF5 data I/O    : save_data(), tagsave(), load_data(), load_selective(), …
+  - Smart caching    : produce_or_load()
+
+Key design choices
+------------------
+save_data  — git info is **opt-in** (``include_git=False`` by default).
+             Pass ``include_git=True`` to embed commit hash / branch / dirty
+             flag in the file's metadata.
+tagsave    — thin alias that **always** captures git state; equivalent to
+             ``save_data(..., include_git=True)``.  Use this when you want
+             every saved file to be traceable to an exact commit.
 """
 
 import numpy as np
@@ -239,25 +250,38 @@ def git_status_clean():
 
 
 def _get_script_info():
-    """Get information about the calling script."""
+    """Get information about the calling script.
+
+    Walks up the call stack and returns the first frame whose file is not
+    this module (utils.py / pywatson_utils.py).  This works correctly
+    regardless of call depth:
+
+    * ``save_data(..., include_git=True)`` — 2 frames deep
+    * ``tagsave(...)`` — 3 frames deep
+    * ``produce_or_load(...)`` — 4 frames deep
+    """
+    this_file = Path(__file__).resolve()
     frame = inspect.currentframe()
     try:
-        # Get the frame of the caller (skip this function and save_data/tagsave)
-        caller = inspect.getouterframes(frame)[2]
-        script_absolute_path = Path(caller.filename).resolve()
+        outer_frames = inspect.getouterframes(frame)
+        script_absolute_path = None
+        for caller in outer_frames[1:]:  # skip frame 0 (this function itself)
+            caller_path = Path(caller.filename).resolve()
+            if caller_path != this_file:
+                script_absolute_path = caller_path
+                break
 
-        # Get the project root path
+        if script_absolute_path is None:
+            return "unknown_script"
+
+        # Try to return a path relative to the project root
         project_root = find_project_root()
-
-        # Try to get relative path from project root
         if project_root:
             try:
-                script_relative_path = script_absolute_path.relative_to(project_root)
-                return str(script_relative_path)
+                return str(script_absolute_path.relative_to(project_root))
             except ValueError:
                 pass
 
-        # If not in project directory, use the full path
         return str(script_absolute_path)
     except (IndexError, AttributeError):
         return "unknown_script"
@@ -271,10 +295,14 @@ def save_data(
     filename: str,
     metadata: Optional[Dict[str, Any]] = None,
     compression: Optional[str] = "gzip",
-    include_git: bool = True,
+    include_git: bool = False,
 ) -> Path:
     """
-    Save data to HDF5 file in the data directory with metadata and git information.
+    Save data to HDF5 file in the data directory with metadata.
+
+    Git information is **opt-in**: pass ``include_git=True`` to embed the
+    current commit hash, branch, and dirty-state flag in the file metadata.
+    Use :func:`tagsave` instead if you always want git tracking.
 
     Args:
         data: Dictionary of data to save (keys become HDF5 groups/datasets)
@@ -282,6 +310,7 @@ def save_data(
         metadata: Optional metadata dictionary
         compression: Compression method ('gzip', 'lzf', 'szip', or None)
         include_git: Whether to include git information in metadata
+                     (default: False — opt-in)
 
     Returns:
         Path to the saved file
@@ -552,15 +581,24 @@ def load_array(filename: str, array_name: Optional[str] = None) -> np.ndarray:
 
 def tagsave(filename: str, data: Dict[str, Any], tags: Optional[Dict[str, Any]] = None) -> Path:
     """
-    Save data with git information and custom tags (DrWatson.jl style).
+    Save data with git state and custom tags (DrWatson.jl-style alias).
+
+    Equivalent to ``save_data(data, filename, metadata=tags, include_git=True)``.
+    Use this whenever you want every file to carry an exact git commit hash,
+    branch name, and dirty-state flag — e.g. for parameter sweeps where
+    reproducibility is critical.
 
     Args:
         filename: Name of the file (with or without .h5 extension)
         data: Data dictionary to save
-        tags: Additional tags to include in metadata
+        tags: Additional tags to include in metadata (merged with git info)
 
     Returns:
         Path to the saved file
+
+    Example:
+        >>> params = {"alpha": 0.01, "nx": 100}
+        >>> tagsave(savename(params), {"T": temperature_array}, tags=params)
     """
     if tags is None:
         tags = {}
@@ -574,16 +612,29 @@ def tagsave(filename: str, data: Dict[str, Any], tags: Optional[Dict[str, Any]] 
 
 def produce_or_load(filename: str, producing_function, *args, **kwargs):
     """
-    Load existing data or produce and save new data (DrWatson.jl style).
+    Load existing data or produce and save new data (DrWatson.jl-style smart cache).
+
+    On the **first** call the producing function is executed and its result is
+    saved via :func:`tagsave` (git info always captured).  On every subsequent
+    call the file is loaded directly — the producing function is not called.
 
     Args:
-        filename: Name of the file to load from or save to
-        producing_function: Function that produces the data if file doesn't exist
-        *args: Positional arguments for producing_function
-        **kwargs: Keyword arguments for producing_function
+        filename: Name of the cache file to load from or save to
+        producing_function: Function that returns a ``dict`` if the file does
+                            not yet exist
+        *args: Positional arguments forwarded to ``producing_function``
+        **kwargs: Keyword arguments forwarded to ``producing_function``
 
     Returns:
-        Tuple of (data_dict, existed) where existed is bool indicating if file existed
+        Tuple of ``(data_dict, existed)`` where ``existed`` is ``True`` when
+        the file was loaded from cache and ``False`` when it was just computed.
+
+    Raises:
+        TypeError: If ``producing_function`` does not return a ``dict``.
+
+    Example:
+        >>> data, existed = produce_or_load("sim_alpha=0.01", run_simulation, alpha=0.01)
+        >>> print("cached" if existed else "computed")
     """
     if not filename.endswith(".h5"):
         filename = filename + ".h5"

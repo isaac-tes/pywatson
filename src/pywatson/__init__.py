@@ -1,12 +1,12 @@
 """
-PyWatson - A Python scientific project managment tool inspired by DrWatson.jl
+PyWatson - A Python scientific project management tool inspired by DrWatson.jl
 
 This tool creates a complete Python project structure with modern tooling (uv),
 comprehensive documentation, example code, and tests.
 """
 
-from . import drwatson
-from .drwatson import (
+from . import utils
+from .utils import (
     # Path management
     datadir,
     plotsdir,
@@ -37,7 +37,7 @@ from .drwatson import (
 __version__ = "0.1.0"
 
 __all__ = [
-    "drwatson",
+    "utils",
     # Path management
     "datadir",
     "plotsdir",

@@ -5,12 +5,13 @@ This tool creates a complete Python project structure with modern tooling (uv),
 comprehensive documentation, example code, and tests.
 
 Project types:
-  - default: DrWatson.jl standard layout with data/{sims, exp_raw, exp_pro}
+  - default: PyWatson standard layout with data/{sims, exp_raw, exp_pro}
   - minimal: Lightweight layout with just src, data, scripts, tests
   - full:    Everything + config/, Makefile, CI, CONTRIBUTING, CHANGELOG
 """
 
 import os
+import re
 import subprocess
 import sys
 from datetime import datetime
@@ -30,7 +31,7 @@ console = Console()
 
 # Valid project types and their descriptions
 PROJECT_TYPES = {
-    "default": "DrWatson.jl standard (data/{sims, exp_raw, exp_pro})",
+    "default": "PyWatson standard (data/{sims, exp_raw, exp_pro})",
     "minimal": "Lightweight (src, data, scripts, tests)",
     "full": "Full (everything + config/, Makefile, CI, CONTRIBUTING, CHANGELOG)",
 }
@@ -43,12 +44,18 @@ LICENSE_TEMPLATES = {
     "ISC": "LICENSE_ISC.jinja2",
 }
 
+# Valid linting modes
+LINTING_MODES = ["minimal", "strict"]
+
+# Valid type checkers
+TYPE_CHECKERS = ["ty", "mypy", "none"]
+
 
 class ProjectScaffolder:
     """Main class for scaffolding Python projects.
 
     Supports three project types:
-      - ``default``: DrWatson.jl standard layout with data/{sims, exp_raw, exp_pro}
+      - ``default``: PyWatson standard layout with data/{sims, exp_raw, exp_pro}
       - ``minimal``: Lightweight layout with just src, data, scripts, tests
       - ``full``:    Everything from *default* plus config/, Makefile, CI,
                      CONTRIBUTING, CHANGELOG
@@ -60,12 +67,18 @@ class ProjectScaffolder:
         project_path: Path,
         project_type: str = "default",
         license_type: str = "MIT",
+        python_version: str = "3.12",
+        linting_mode: str = "minimal",
+        type_checker: str = "ty",
     ) -> None:
         self.project_name = project_name
         self.project_path = project_path
         self.package_name = project_name.lower().replace("-", "_").replace(" ", "_")
         self.project_type = project_type
         self.license_type = license_type
+        self.python_version = python_version
+        self.linting_mode = linting_mode
+        self.type_checker = type_checker
 
         # Validate project_type
         if self.project_type not in PROJECT_TYPES:
@@ -79,6 +92,20 @@ class ProjectScaffolder:
             raise ValueError(
                 f"Unknown license type '{self.license_type}'. "
                 f"Valid options: {', '.join(LICENSE_TEMPLATES)}"
+            )
+
+        # Validate linting_mode
+        if self.linting_mode not in LINTING_MODES:
+            raise ValueError(
+                f"Unknown linting mode '{self.linting_mode}'. "
+                f"Valid options: {', '.join(LINTING_MODES)}"
+            )
+
+        # Validate type_checker
+        if self.type_checker not in TYPE_CHECKERS:
+            raise ValueError(
+                f"Unknown type checker '{self.type_checker}'. "
+                f"Valid options: {', '.join(TYPE_CHECKERS)}"
             )
 
         # Initialize Jinja2 environment for template rendering
@@ -100,6 +127,31 @@ class ProjectScaffolder:
         """
         template = self.jinja_env.get_template(template_name)
         return template.render(**context)
+
+    def _base_context(self, author_name: str = "", author_email: str = "") -> dict:
+        """Build the base Jinja2 context shared by all templates.
+
+        Args:
+            author_name: Author's full name.
+            author_email: Author's email address.
+
+        Returns:
+            Dictionary of template variables.
+        """
+        python_version_nodot = self.python_version.replace(".", "")
+        return {
+            "project_name": self.project_name,
+            "project_name_title": (self.project_name.title().replace("-", " ").replace("_", " ")),
+            "package_name": self.package_name,
+            "author_name": author_name,
+            "author_email": author_email,
+            "project_type": self.project_type,
+            "license_type": self.license_type,
+            "python_version": self.python_version,
+            "python_version_nodot": python_version_nodot,
+            "linting_mode": self.linting_mode,
+            "type_checker": self.type_checker,
+        }
 
     # ------------------------------------------------------------------
     # Directory structure
@@ -135,7 +187,7 @@ class ProjectScaffolder:
             directories = base_dirs + [
                 "notebooks",
                 "plots",
-                # DrWatson.jl-style data subdirectories
+                # PyWatson-style data subdirectories
                 "data/sims",
                 "data/exp_raw",
                 "data/exp_pro",
@@ -170,6 +222,16 @@ class ProjectScaffolder:
 
         original_cwd = Path.cwd()
         try:
+            # If pyproject.toml already exists, assume the directory has been
+            # initialized with uv already — skip uv init to avoid failure.
+            pyproject_file = self.project_path / "pyproject.toml"
+            if pyproject_file.exists():
+                console.print(
+                    f"pyproject.toml already exists in {self.project_path}; skipping 'uv init'",
+                    style="dim",
+                )
+                return
+
             os.chdir(self.project_path)
             result = subprocess.run(
                 ["uv", "init", "--lib", "--name", self.project_name],
@@ -183,8 +245,25 @@ class ProjectScaffolder:
                     style="bold red",
                 )
                 raise RuntimeError("Failed to initialize uv project")
-        finally:
+
+            # Remove .python-version created by uv init — it pins an exact
+            # patch version (e.g. "3.12.9") which is overly restrictive.
+            # The requires-python field in pyproject.toml is sufficient.
+            python_version_file = self.project_path / ".python-version"
+            if python_version_file.exists():
+                python_version_file.unlink()
+                console.print(
+                    "Removed .python-version (version constraint handled by pyproject.toml)",
+                    style="dim",
+                )
+        except Exception:
+            # Ensure we always restore cwd on any exception
             os.chdir(original_cwd)
+            raise
+        finally:
+            # Restore original working directory in all cases
+            if Path.cwd() != original_cwd:
+                os.chdir(original_cwd)
 
     def add_dependencies(
         self,
@@ -258,13 +337,7 @@ class ProjectScaffolder:
         """
         console.print("Creating source files from templates...", style="bold blue")
 
-        context = {
-            "project_name": self.project_name,
-            "project_name_title": self.project_name.title().replace("-", " ").replace("_", " "),
-            "package_name": self.package_name,
-            "author_name": author_name,
-            "author_email": author_email,
-        }
+        context = self._base_context(author_name, author_email)
 
         # __init__.py
         init_content = self._render_template("__init__.py.jinja2", **context)
@@ -274,21 +347,21 @@ class ProjectScaffolder:
         core_content = self._render_template("core.py.jinja2", **context)
         (self.project_path / "src" / self.package_name / "core.py").write_text(core_content)
 
-        # drwatson.py — copied verbatim (not templated)
-        self._copy_drwatson_file()
+        # pywatson_utils.py — copied verbatim (not templated)
+        self._copy_utils_file()
 
-    def _copy_drwatson_file(self) -> None:
-        """Copy the drwatson.py file directly to the project."""
+    def _copy_utils_file(self) -> None:
+        """Copy pywatson_utils.py (utils.py) directly to the generated project."""
         import shutil
 
-        source_drwatson = Path(__file__).parent / "drwatson.py"
-        target_drwatson = self.project_path / "src" / self.package_name / "drwatson.py"
+        source_utils = Path(__file__).parent / "utils.py"
+        target_utils = self.project_path / "src" / self.package_name / "pywatson_utils.py"
 
-        if source_drwatson.exists():
-            shutil.copy2(source_drwatson, target_drwatson)
+        if source_utils.exists():
+            shutil.copy2(source_utils, target_utils)
         else:
             console.print(
-                f"Warning: drwatson.py not found at {source_drwatson}",
+                f"Warning: utils.py not found at {source_utils}",
                 style="yellow",
             )
 
@@ -314,13 +387,16 @@ class ProjectScaffolder:
         """Create example scripts using Jinja2 templates."""
         console.print("Creating example scripts...", style="bold blue")
 
-        context = {"package_name": self.package_name}
+        context = self._base_context()
 
         generate_script = self._render_template("generate_data.py.jinja2", **context)
         (self.project_path / "scripts" / "generate_data.py").write_text(generate_script)
 
         analyze_script = self._render_template("analyze_data.py.jinja2", **context)
         (self.project_path / "scripts" / "analyze_data.py").write_text(analyze_script)
+
+        showcase_script = self._render_template("pywatson_showcase.py.jinja2", **context)
+        (self.project_path / "scripts" / "pywatson_showcase.py").write_text(showcase_script)
 
     # ------------------------------------------------------------------
     # README
@@ -351,17 +427,9 @@ class ProjectScaffolder:
             ]
         )
 
-        context = {
-            "project_name": self.project_name,
-            "project_name_title": self.project_name.title().replace("-", " ").replace("_", " "),
-            "package_name": self.package_name,
-            "author_name": author_name,
-            "author_email": author_email,
-            "description": description,
-            "deps_list": deps_list,
-            "project_type": self.project_type,
-            "license_type": self.license_type,
-        }
+        context = self._base_context(author_name, author_email)
+        context["description"] = description
+        context["deps_list"] = deps_list
 
         readme_content = self._render_template("README.md.jinja2", **context)
         (self.project_path / "README.md").write_text(readme_content)
@@ -390,6 +458,12 @@ class ProjectScaffolder:
             content = content.replace(
                 'description = "Add your description here"',
                 f'description = "{description}"',
+            )
+            # Patch requires-python to match the user's chosen Python version
+            content = re.sub(
+                r'requires-python\s*=\s*">=[\d.]+"',
+                f'requires-python = ">={self.python_version}"',
+                content,
             )
             pyproject_path.write_text(content)
 
@@ -446,13 +520,7 @@ class ProjectScaffolder:
         """
         console.print("Creating full project extras...", style="bold blue")
 
-        context = {
-            "project_name": self.project_name,
-            "project_name_title": self.project_name.title().replace("-", " ").replace("_", " "),
-            "package_name": self.package_name,
-            "author_name": author_name,
-            "author_email": author_email,
-        }
+        context = self._base_context(author_name, author_email)
 
         # config/ruff.toml
         ruff_content = self._render_template("ruff.toml.jinja2", **context)
@@ -582,6 +650,27 @@ def load_environment_file(env_file: Path) -> tuple[list[str], list[str]]:
     help="License for the generated project.",
 )
 @click.option(
+    "--python-version",
+    default="3.12",
+    show_default=True,
+    help="Target Python version (e.g. 3.11, 3.12).",
+)
+@click.option(
+    "--linting",
+    "linting_mode",
+    type=click.Choice(LINTING_MODES, case_sensitive=False),
+    default="minimal",
+    show_default=True,
+    help="Ruff ruleset: minimal (E,F,W,I) or strict (adds D,N,B,SIM,RUF,UP).",
+)
+@click.option(
+    "--type-checker",
+    type=click.Choice(TYPE_CHECKERS, case_sensitive=False),
+    default="ty",
+    show_default=True,
+    help="Type checker for the generated project (ty, mypy, or none).",
+)
+@click.option(
     "--env-file",
     type=click.Path(exists=True),
     help="Environment file (environment.yml) to import dependencies from.",
@@ -595,6 +684,9 @@ def create_project(
     description: str,
     project_type: str,
     license_type: str,
+    python_version: str,
+    linting_mode: str,
+    type_checker: str,
     env_file: Optional[str],
     force: bool,
 ) -> None:
@@ -607,9 +699,12 @@ def create_project(
     PROJECT_NAME is the name for your new project (e.g. 'my-simulation').
     """
     console.print(f"Creating project: [bold blue]{project_name}[/bold blue]")
-    console.print(f"  Type: [cyan]{project_type}[/cyan] ({PROJECT_TYPES[project_type]})")
-    console.print(f"  License: [cyan]{license_type}[/cyan]")
-    console.print(f"  Working directory: [dim]{Path.cwd()}[/dim]")
+    console.print(f"  Type         : [cyan]{project_type}[/cyan] ({PROJECT_TYPES[project_type]})")
+    console.print(f"  License      : [cyan]{license_type}[/cyan]")
+    console.print(f"  Python       : [cyan]{python_version}[/cyan]")
+    console.print(f"  Linting      : [cyan]{linting_mode}[/cyan]")
+    console.print(f"  Type checker : [cyan]{type_checker}[/cyan]")
+    console.print(f"  Working dir  : [dim]{Path.cwd()}[/dim]")
 
     project_path = Path(path) / project_name
 
@@ -645,12 +740,21 @@ def create_project(
         ]
         dev_dependencies = ["pytest>=7.0.0", "pytest-cov>=4.0.0"]
 
+    # Add the chosen type checker as a dev dependency
+    if type_checker == "ty":
+        dev_dependencies.append("ty>=0.0.1")
+    elif type_checker == "mypy":
+        dev_dependencies.append("mypy>=1.13.0")
+
     # Create scaffolder and build project
     scaffolder = ProjectScaffolder(
         project_name,
         project_path,
         project_type=project_type,
         license_type=license_type,
+        python_version=python_version,
+        linting_mode=linting_mode,
+        type_checker=type_checker,
     )
 
     try:
@@ -663,16 +767,16 @@ def create_project(
         # 3. Dependencies
         scaffolder.add_dependencies(dependencies, dev_dependencies)
 
-        # 4. Source files
+        # 4. Source files (includes pywatson_utils.py copy)
         scaffolder.create_source_files(author_name, author_email)
 
         # 5. Tests
         scaffolder.create_test_files()
 
-        # 6. Example scripts
+        # 6. Example scripts (includes pywatson_showcase.py)
         scaffolder.create_example_script()
 
-        # 7. README (uses project_type and license_type internally)
+        # 7. README
         scaffolder.create_readme(author_name, author_email, dependencies, description)
 
         # 8. pyproject.toml metadata
@@ -696,11 +800,14 @@ def create_project(
 
         console.print("\nNext steps:")
         console.print(f"   cd {project_name}")
-        console.print("   uv sync                                    # Install dependencies")
-        console.print("   uv run pytest                              # Run tests")
-        console.print("   uv run python scripts/generate_data.py     # Generate example data")
+        console.print("   uv sync                                       # Install dependencies")
+        console.print("   uv run pytest                                 # Run tests")
+        console.print("   uv run python scripts/pywatson_showcase.py    # Run API showcase")
+        console.print("   uv run python scripts/generate_data.py        # Generate example data")
         if project_type == "full":
-            console.print("   make check                                 # Run all quality checks")
+            console.print(
+                "   make check                                    # Run all quality checks"
+            )
 
     except Exception as e:
         console.print(f"Error creating project: {e}", style="bold red")

@@ -3,7 +3,7 @@
 # PyWatson - Quick Project Creator
 #
 # This script provides a convenient interactive wrapper around the
-# `drwatson-init` CLI for creating DrWatson-style Python projects.
+# `pywatson-init` CLI for creating PyWatson-style Python projects.
 #
 # Usage:
 #   ./create-project.sh -i           # Full interactive mode
@@ -49,7 +49,7 @@ create_project_interactive() {
     # --- Project type selection ---
     echo
     echo "Select project type:"
-    echo "  1) default  - DrWatson.jl standard (data/{sims, exp_raw, exp_pro})"
+    echo "  1) default  - PyWatson standard (data/{sims, exp_raw, exp_pro})"
     echo "  2) minimal  - Lightweight (src, data, scripts, tests)"
     echo "  3) full     - Everything + config/, Makefile, CI, CONTRIBUTING, CHANGELOG"
     echo
@@ -89,6 +89,47 @@ create_project_interactive() {
     # --- Environment file (optional) ---
     read -p "Environment file (optional, .yml file): " env_file
 
+    # --- Python version ---
+    echo
+    read -p "Target Python version (default: 3.12): " python_version
+    python_version="${python_version:-3.12}"
+
+    # --- Linting mode ---
+    echo
+    echo "Select linting mode:"
+    echo "  1) minimal  - Essential checks only (E, F, W, I)"
+    echo "  2) strict   - Full ruleset (adds D, N, B, SIM, RUF, UP)"
+    echo
+    read -p "Linting mode [1/2] (default: 1): " linting_choice
+
+    case "${linting_choice:-1}" in
+        1) linting_mode="minimal" ;;
+        2) linting_mode="strict" ;;
+        *)
+            echo "Invalid choice, using 'minimal'"
+            linting_mode="minimal"
+            ;;
+    esac
+
+    # --- Type checker ---
+    echo
+    echo "Select type checker:"
+    echo "  1) ty    - Astral ty (fast, modern)"
+    echo "  2) mypy  - mypy (mature, widely used)"
+    echo "  3) none  - No type checker"
+    echo
+    read -p "Type checker [1/2/3] (default: 1): " checker_choice
+
+    case "${checker_choice:-1}" in
+        1) type_checker="ty" ;;
+        2) type_checker="mypy" ;;
+        3) type_checker="none" ;;
+        *)
+            echo "Invalid choice, using 'ty'"
+            type_checker="ty"
+            ;;
+    esac
+
     if [[ -z "$project_path" ]]; then
         project_path="."
     fi
@@ -101,11 +142,14 @@ create_project_interactive() {
     echo "  Desc:     $description"
     echo "  Type:     $project_type"
     echo "  License:  $license_type"
+    echo "  Python:   $python_version"
+    echo "  Linting:  $linting_mode"
+    echo "  Checker:  $type_checker"
     echo "  Path:     $project_path"
     echo
 
-    read -p "Continue? (y/N): " confirm
-    if [[ $confirm != [yY] ]]; then
+    read -p "Continue? (Y/n): " confirm
+    if [[ -n "$confirm" && "$confirm" != [yY] ]]; then
         echo "Aborted"
         exit 0
     fi
@@ -135,13 +179,16 @@ create_project_interactive() {
     fi
 
     # Build the command
-    cmd=(uv run drwatson-init "$project_name"
+    cmd=(uv run pywatson-init "$project_name"
         --path "$project_path"
         --author-name "$author_name"
         --author-email "$author_email"
         --description "$description"
         --project-type "$project_type"
         --license "$license_type"
+        --python-version "$python_version"
+        --linting "$linting_mode"
+        --type-checker "$type_checker"
     )
 
     if [[ -n "$env_file" ]]; then
@@ -157,6 +204,7 @@ create_project_interactive() {
     echo "   cd $project_name"
     echo "   uv sync"
     echo "   uv run pytest"
+    echo "   uv run python scripts/pywatson_showcase.py"
     echo "   uv run python scripts/generate_data.py"
     if [[ "$project_type" == "full" ]]; then
         echo "   make check    # Run all quality checks"
@@ -177,11 +225,11 @@ show_usage() {
     echo "  $0 -i                              # Interactive mode"
     echo "  $0 my-project                      # Quick mode (default type, MIT license)"
     echo
-    echo "For advanced usage, use drwatson-init directly:"
-    echo "  uv run drwatson-init --help"
+    echo "For advanced usage, use pywatson-init directly:"
+    echo "  uv run pywatson-init --help"
     echo
     echo "Project types:"
-    echo "  default   DrWatson.jl standard (data/{sims, exp_raw, exp_pro})"
+    echo "  default   PyWatson standard (data/{sims, exp_raw, exp_pro})"
     echo "  minimal   Lightweight (src, data, scripts, tests)"
     echo "  full      Everything + config/, Makefile, CI, CONTRIBUTING, CHANGELOG"
 }
@@ -204,14 +252,38 @@ case "${1:-}" in
         echo "   (Use -i for interactive mode with type & license selection)"
         echo
 
+        # Use explicit variables for defaults to avoid complex nested quoting
         cd "$PROJECT_DIR"
-        uv run drwatson-init "$project_name" \
-            --path "$ORIGINAL_CWD" \
-            --author-name "$(git config user.name 2>/dev/null || echo 'Your Name')" \
-            --author-email "$(git config user.email 2>/dev/null || echo 'your.email@example.com')" \
-            --description "A scientific computing project created with PyWatson" \
-            --project-type default \
+        default_author_name="$(git config user.name 2>/dev/null || echo 'Your Name')"
+        default_author_email="$(git config user.email 2>/dev/null || echo 'your.email@example.com')"
+
+        # If the target directory already exists, offer to force overwrite
+        target_dir="$ORIGINAL_CWD/$project_name"
+        force_flag=""
+        if [[ -d "$target_dir" ]]; then
+            read -p "Directory $target_dir already exists. Overwrite? (y/N): " overwrite_choice
+            if [[ "$overwrite_choice" == [yY] ]]; then
+                force_flag="--force"
+            else
+                echo "Aborted"
+                exit 0
+            fi
+        fi
+
+        cmd=(uv run pywatson-init "$project_name"
+            --path "$ORIGINAL_CWD"
+            --author-name "$default_author_name"
+            --author-email "$default_author_email"
+            --description "A scientific computing project created with PyWatson"
+            --project-type default
             --license MIT
+        )
+
+        if [[ -n "$force_flag" ]]; then
+            cmd+=("$force_flag")
+        fi
+
+        "${cmd[@]}"
 
         echo
         echo "Project created successfully!"
@@ -220,6 +292,7 @@ case "${1:-}" in
         echo "   cd $project_name"
         echo "   uv sync"
         echo "   uv run pytest"
+        echo "   uv run python scripts/pywatson_showcase.py"
         echo "   uv run python scripts/generate_data.py"
         ;;
 esac

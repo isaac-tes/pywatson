@@ -19,7 +19,7 @@
 │   └── {{ package_name }}/
 │       ├── __init__.py  # Public API
 │       ├── core.py      # Project-specific functions
-│       └── drwatson.py  # Path management & HDF5 data utilities
+│       └── pywatson_utils.py  # Path management & HDF5 data utilities
 ├── scripts/             # Standalone scripts (data generation, analysis)
 ├── notebooks/           # Jupyter notebooks for exploration
 ├── tests/               # pytest test suite
@@ -47,7 +47,7 @@
 
 ### Prerequisites
 
-- Python 3.12+
+- Python {{ python_version }}+
 - [uv](https://docs.astral.sh/uv/) package manager
 
 ```bash
@@ -78,9 +78,9 @@ uv run pytest tests/ -v
 uv run jupyter notebook
 ```
 
-## DrWatson-Style Data Management
+## PyWatson-Style Data Management
 
-This project includes `drwatson.py`, which provides Julia's DrWatson.jl-style
+This project includes `pywatson_utils.py`, which provides Julia's DrWatson.jl-style
 utilities for reproducible scientific computing in Python.
 
 ### Path Management
@@ -97,7 +97,7 @@ datafile("results.h5") # -> Path("<project>/data/results.h5")
 
 # Create deterministic filenames from parameters
 params = {"alpha": 0.5, "N": 100, "method": "euler"}
-savename(params, "h5")
+savename(params, ".h5")
 # -> "N=100_alpha=0.5_method=euler.h5"
 ```
 
@@ -128,16 +128,17 @@ partial = load_selective("experiment_001", keys=["temperature"])
 ```python
 from {{ package_name }} import produce_or_load
 
-def expensive_simulation(params):
+def expensive_simulation(N, dt):
     """Run a computationally expensive simulation."""
     # ... your simulation code ...
     return {"result": computed_data}
 
 params = {"N": 1000, "dt": 0.01}
+filename = savename(params, "h5")   # "N=1000_dt=0.01.h5"
 
 # First call: runs the simulation, saves result to data/
 # Second call: loads cached result (no recomputation)
-data, filepath = produce_or_load(expensive_simulation, params)
+data, filepath = produce_or_load(filename, expensive_simulation, 1000, dt=0.01)
 ```
 
 ## Development
@@ -156,7 +157,9 @@ uv sync                          # Reinstall after changes
 ```bash
 make lint        # Run ruff linter
 make format      # Auto-format code
-make typecheck   # Run mypy
+{% if type_checker != "none" -%}
+make typecheck   # Run {{ type_checker }} type checker
+{% endif -%}
 make test        # Run pytest
 make check       # Run all checks
 ```

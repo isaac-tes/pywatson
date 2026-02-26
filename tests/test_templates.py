@@ -31,6 +31,12 @@ class TestTemplateRendering:
             "package_name": "test_project",
             "author_name": "Test Author",
             "author_email": "test@example.com",
+            "python_version": "3.12",
+            "python_version_nodot": "312",
+            "linting_mode": "minimal",
+            "type_checker": "ty",
+            "project_type": "default",
+            "license_type": "MIT",
         }
 
     # ------------------------------------------------------------------
@@ -46,7 +52,7 @@ class TestTemplateRendering:
         assert "Test Author" in content
         assert "test@example.com" in content
         assert "from .core import" in content
-        assert "from .drwatson import" in content
+        assert "from .pywatson_utils import" in content
         assert "hello_world" in content
         assert "load_selective" in content
 
@@ -158,7 +164,7 @@ class TestTemplateRendering:
         assert "Contributing" in content
         assert "test-project" in content
         assert "uv sync" in content
-        assert "DrWatson" in content
+        assert "PyWatson" in content
 
     def test_changelog_md_template_renders(self, jinja_env, template_context):
         """Test that CHANGELOG.md template renders correctly."""
@@ -168,6 +174,26 @@ class TestTemplateRendering:
         assert "Changelog" in content
         assert "Test Project" in content
         assert "[Unreleased]" in content
+
+    def test_pywatson_showcase_template_renders(self, jinja_env, template_context):
+        """Test that pywatson_showcase.py template renders valid Python."""
+        template = jinja_env.get_template("pywatson_showcase.py.jinja2")
+        content = template.render(**template_context)
+
+        assert "produce_or_load" in content
+        assert "savename" in content
+        assert "save_data" in content
+        assert "tagsave" in content
+        assert "load_data" in content
+        assert "load_selective" in content
+        assert "run_heat_diffusion" in content
+        assert "def main()" in content
+        assert "test_project" in content
+
+        try:
+            compile(content, "<pywatson_showcase.py.jinja2>", "exec")
+        except SyntaxError as e:
+            pytest.fail(f"pywatson_showcase.py.jinja2 renders invalid Python: {e}")
 
     # ------------------------------------------------------------------
     # License templates
@@ -227,7 +253,7 @@ class TestTemplateRendering:
         assert "test_project" in content
         assert "sims/" in content
         assert "exp_raw/" in content
-        assert "DrWatson" in content
+        assert "PyWatson" in content
         assert "MIT License" in content
 
     def test_readme_template_renders_minimal(self, jinja_env, template_context):
@@ -289,6 +315,8 @@ class TestTemplateRendering:
             "ci.yml.jinja2",
             "CONTRIBUTING.md.jinja2",
             "CHANGELOG.md.jinja2",
+            # Showcase script
+            "pywatson_showcase.py.jinja2",
             # License templates
             "LICENSE_MIT.jinja2",
             "LICENSE_BSD3.jinja2",
@@ -312,6 +340,7 @@ class TestTemplateRendering:
             "test_core.py.jinja2",
             "generate_data.py.jinja2",
             "analyze_data.py.jinja2",
+            "pywatson_showcase.py.jinja2",
         ]
 
         for template_name in python_templates:

@@ -12,10 +12,11 @@
 line-length = 99
 
 # Target Python version
-target-version = "py312"
+target-version = "py{{ python_version_nodot }}"
 
 [lint]
-# Enable a broad set of rules, disable selectively below
+{% if linting_mode == "strict" -%}
+# Strict ruleset: broad coverage for production-quality code
 select = [
     "E",    # pycodestyle errors
     "W",    # pycodestyle warnings
@@ -35,13 +36,25 @@ ignore = [
     "D203",  # One blank line before class docstring (conflicts with D211)
     "D213",  # Multi-line docstring summary on second line (conflicts with D212)
 ]
+{% else -%}
+# Minimal ruleset: essential checks only
+select = [
+    "E",    # pycodestyle errors
+    "F",    # Pyflakes
+    "W",    # pycodestyle warnings
+    "I",    # isort (import sorting)
+]
+{% endif %}
 
 [lint.per-file-ignores]
 # Relax rules for tests — allow assertions, magic numbers, etc.
+{% if linting_mode == "strict" -%}
 "tests/**/*.py" = ["D", "S101"]
 # Scripts are more relaxed
 "scripts/**/*.py" = ["D", "T201"]
-
+{% else -%}
+"tests/**/*.py" = ["S101"]
+{% endif %}
 [lint.isort]
 # Group imports: stdlib -> third-party -> local
 known-first-party = ["{{ package_name }}"]

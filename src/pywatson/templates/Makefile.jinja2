@@ -48,10 +48,19 @@ format: ## Auto-format code with ruff
 format-check: ## Check formatting without modifying files
 	uv run ruff format --check src/ tests/
 
-typecheck: ## Run mypy type checker
+typecheck: ## Run type checker
+{% if type_checker == "mypy" -%}
 	uv run mypy src/{{ package_name }}/
-
+{% elif type_checker == "ty" -%}
+	uv run ty check src/{{ package_name }}/
+{% else -%}
+	@echo "No type checker configured (type_checker=none)."
+{% endif %}
+{% if type_checker != "none" -%}
 check: lint format-check typecheck test ## Run all checks (lint + format + typecheck + test)
+{% else -%}
+check: lint format-check test ## Run all checks (lint + format + test)
+{% endif %}
 
 # ---------------------------------------------------------------------------
 # Data & analysis workflows
@@ -84,7 +93,11 @@ build: ## Build distribution packages
 
 clean: ## Remove build artifacts, caches, and temporary files
 	rm -rf build/ dist/ *.egg-info
+{% if type_checker == "mypy" -%}
 	rm -rf .pytest_cache/ .mypy_cache/ .ruff_cache/
+{% else -%}
+	rm -rf .pytest_cache/ .ruff_cache/
+{% endif -%}
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	find . -type f -name "*.pyc" -delete 2>/dev/null || true
 	@echo "Cleaned build artifacts and caches."
