@@ -94,3 +94,7 @@ data/
 plots/
 notebooks/
 results/
+
+# Dolt database files (added by bd init)
+.dolt/
+*.db

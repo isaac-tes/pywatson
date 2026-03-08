@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "server",
+  "dolt_database": "pywatson",
+  "project_id": "b717d197-90a4-4572-9200-cf78c00c4948"
+}
