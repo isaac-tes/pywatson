@@ -95,6 +95,15 @@ plots/
 notebooks/
 results/
 
+# AI-related files
+AGENTS.md
+# .github/copilot-instructions.md
+.github/
+
+# specstory files
+.specstory/
+
+
 # Dolt database files (added by bd init)
 .dolt/
 *.db
