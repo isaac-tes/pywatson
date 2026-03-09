@@ -1,23 +1,46 @@
-"""
-Tests for pywatson.utils — focusing on _get_script_info() correctness.
+"""Tests for pywatson.utils — path management, HDF5 I/O, savename, and script-info.
 
-Key invariant: regardless of call depth (_get_script_info called directly,
-via save_data, via tagsave, or via produce_or_load), the returned script path
-must point to the **user's** file, not to utils.py / pywatson_utils.py.
+Key invariants:
+  - _get_script_info must point to the caller's file, not utils.py, at any depth.
+  - Path helpers return paths relative to project root; directories are auto-created
+    when create=True and left alone when create=False.
+  - savename produces deterministic, sorted, human-readable filenames.
+  - HDF5 round-trips preserve numeric arrays, scalars, strings, and metadata.
 """
 
-import json
 from pathlib import Path
 from unittest.mock import patch
 
+import numpy as np
 import pytest
 
 from pywatson.utils import (
     _get_script_info,
-    save_data,
-    tagsave,
-    produce_or_load,
+    collect_results,
+    data_info,
+    datadir,
+    datafile,
+    docsdir,
+    find_project_root,
+    get_project_dir,
+    list_data_files,
+    load_array,
     load_data,
+    load_selective,
+    notebookfile,
+    notebooksdir,
+    plotfile,
+    plotsdir,
+    produce_or_load,
+    projectdir,
+    save_array,
+    save_data,
+    savename,
+    scriptfile,
+    scriptsdir,
+    srcdir,
+    tagsave,
+    testsdir,
 )
 
 # ---------------------------------------------------------------------------
@@ -103,6 +126,7 @@ class TestTagsaveScriptMetadata:
 
     @pytest.fixture()
     def mock_project(self, tmp_path):
+        """Mock project."""
         data_dir = tmp_path / "data"
         data_dir.mkdir()
 
@@ -128,6 +152,7 @@ class TestProduceOrLoadScriptMetadata:
 
     @pytest.fixture()
     def mock_project(self, tmp_path):
+        """Mock project."""
         data_dir = tmp_path / "data"
         data_dir.mkdir()
 
@@ -141,6 +166,7 @@ class TestProduceOrLoadScriptMetadata:
         """produce_or_load() must store the test file path, not utils.py."""
 
         def _make_data():
+            """Make data."""
             return {"z": 3}
 
         _, existed = produce_or_load("test_pol_script", _make_data)
@@ -153,3 +179,535 @@ class TestProduceOrLoadScriptMetadata:
             f"produce_or_load stored script='{script}' which looks like utils.py"
         )
         assert "test_utils" in script, f"Expected 'test_utils' in script metadata, got '{script}'"
+
+
+# ---------------------------------------------------------------------------
+# Path management tests
+# ---------------------------------------------------------------------------
+
+
+class TestFindProjectRoot:
+    """Tests for find_project_root()."""
+
+    @pytest.fixture(autouse=True)
+    def reset_cache(self, monkeypatch):
+        """Reset the global _PROJECT_ROOT cache before and after each test."""
+        monkeypatch.setattr("pywatson.utils._PROJECT_ROOT", None)
+
+    def test_finds_pyproject_toml(self, tmp_path):
+        """Finds pyproject toml."""
+        (tmp_path / "pyproject.toml").write_text('[project]\nname = "test"')
+        result = find_project_root(tmp_path)
+        assert result == tmp_path
+
+    def test_finds_git_dir(self, tmp_path):
+        """Finds git dir."""
+        (tmp_path / ".git").mkdir()
+        result = find_project_root(tmp_path)
+        assert result == tmp_path
+
+    def test_finds_root_from_subdirectory(self, tmp_path):
+        """Finds root from subdirectory."""
+        (tmp_path / "pyproject.toml").write_text('[project]\nname = "test"')
+        nested = tmp_path / "src" / "mypackage"
+        nested.mkdir(parents=True)
+        result = find_project_root(nested)
+        assert result == tmp_path
+
+    def test_finds_nearest_marker(self, tmp_path):
+        """When both a subdir and its parent have markers, the closer one wins."""
+        (tmp_path / "pyproject.toml").write_text('[project]\nname = "parent"')
+        sub = tmp_path / "sub"
+        sub.mkdir()
+        (sub / "pyproject.toml").write_text('[project]\nname = "sub"')
+        result = find_project_root(sub)
+        assert result == sub
+
+    def test_accepts_string_path(self, tmp_path):
+        """Accepts string path."""
+        (tmp_path / "pyproject.toml").write_text('[project]\nname = "test"')
+        result = find_project_root(str(tmp_path))
+        assert result == tmp_path
+
+    def test_caches_result(self, tmp_path, monkeypatch):
+        """After first call, successive calls return cached value."""
+        (tmp_path / "pyproject.toml").write_text('[project]\nname = "test"')
+        first = find_project_root(tmp_path)
+        # Removing the marker doesn't change the result because of caching
+        (tmp_path / "pyproject.toml").unlink()
+        second = find_project_root(tmp_path)
+        assert first == second
+
+
+class TestGetProjectDir:
+    """Tests for get_project_dir()."""
+
+    @pytest.fixture()
+    def mock_project(self, tmp_path):
+        """Mock project."""
+        with (
+            patch("pywatson.utils._PROJECT_ROOT", tmp_path),
+            patch("pywatson.utils.find_project_root", return_value=tmp_path),
+        ):
+            yield tmp_path
+
+    def test_returns_correct_path(self, mock_project):
+        """Returns correct path."""
+        result = get_project_dir("data", create=False)
+        assert result == mock_project / "data"
+
+    def test_creates_dir_when_create_true(self, mock_project):
+        """Creates dir when create true."""
+        result = get_project_dir("newdir", create=True)
+        assert result.exists()
+        assert result.is_dir()
+
+    def test_does_not_create_dir_when_create_false(self, mock_project):
+        """Does not create dir when create false."""
+        result = get_project_dir("newdir", create=False)
+        assert not result.exists()
+
+    def test_chains_subdirs(self, mock_project):
+        """Chains subdirs."""
+        result = get_project_dir("data", "sims", "run1", create=False)
+        assert result == mock_project / "data" / "sims" / "run1"
+
+    def test_creates_nested_subdirs(self, mock_project):
+        """Creates nested subdirs."""
+        result = get_project_dir("data", "sims", "run1", create=True)
+        assert result.exists()
+
+    def test_raises_when_no_project_root(self):
+        """Raises when no project root."""
+        with patch("pywatson.utils.find_project_root", return_value=None):
+            with pytest.raises(RuntimeError, match="Could not find project root"):
+                get_project_dir("data")
+
+
+class TestProjectDirHelpers:
+    """Tests for datadir, plotsdir, scriptsdir, …, projectdir."""
+
+    @pytest.fixture()
+    def mock_project(self, tmp_path):
+        """Mock project."""
+        with (
+            patch("pywatson.utils._PROJECT_ROOT", tmp_path),
+            patch("pywatson.utils.find_project_root", return_value=tmp_path),
+        ):
+            yield tmp_path
+
+    def test_datadir(self, mock_project):
+        """Datadir."""
+        assert datadir(create=False) == mock_project / "data"
+
+    def test_plotsdir(self, mock_project):
+        """Plotsdir."""
+        assert plotsdir(create=False) == mock_project / "plots"
+
+    def test_scriptsdir(self, mock_project):
+        """Scriptsdir."""
+        assert scriptsdir(create=False) == mock_project / "scripts"
+
+    def test_notebooksdir(self, mock_project):
+        """Notebooksdir."""
+        assert notebooksdir(create=False) == mock_project / "notebooks"
+
+    def test_docsdir(self, mock_project):
+        """Docsdir."""
+        assert docsdir(create=False) == mock_project / "docs"
+
+    def test_testsdir(self, mock_project):
+        """Testsdir."""
+        assert testsdir(create=False) == mock_project / "tests"
+
+    def test_srcdir(self, mock_project):
+        """Srcdir."""
+        assert srcdir(create=False) == mock_project / "src"
+
+    def test_datadir_with_subdirs(self, mock_project):
+        """Datadir with subdirs."""
+        result = datadir("sims", "run1", create=False)
+        assert result == mock_project / "data" / "sims" / "run1"
+
+    def test_plotsdir_with_subdirs(self, mock_project):
+        """Plotsdir with subdirs."""
+        result = plotsdir("paper", create=False)
+        assert result == mock_project / "plots" / "paper"
+
+    def test_plotsdir_creates_subdir(self, mock_project):
+        """Plotsdir creates subdir."""
+        result = plotsdir("paper", create=True)
+        assert result.exists()
+
+    def test_projectdir_returns_root(self, mock_project):
+        """Projectdir returns root."""
+        assert projectdir() == mock_project
+
+    def test_projectdir_raises_when_no_root(self):
+        """Projectdir raises when no root."""
+        with patch("pywatson.utils.find_project_root", return_value=None):
+            with pytest.raises(RuntimeError):
+                projectdir()
+
+
+class TestConvenienceFileHelpers:
+    """Tests for datafile, plotfile, scriptfile, notebookfile."""
+
+    @pytest.fixture()
+    def mock_project(self, tmp_path):
+        """Mock project."""
+        with (
+            patch("pywatson.utils._PROJECT_ROOT", tmp_path),
+            patch("pywatson.utils.find_project_root", return_value=tmp_path),
+        ):
+            yield tmp_path
+
+    def test_datafile_path(self, mock_project):
+        """Datafile path."""
+        result = datafile("results.h5", create_dir=False)
+        assert result == mock_project / "data" / "results.h5"
+
+    def test_datafile_creates_parent_dir(self, mock_project):
+        """Datafile creates parent dir."""
+        datafile("results.h5", create_dir=True)
+        assert (mock_project / "data").exists()
+
+    def test_datafile_no_create(self, mock_project):
+        """Datafile no create."""
+        datafile("results.h5", create_dir=False)
+        assert not (mock_project / "data").exists()
+
+    def test_plotfile(self, mock_project):
+        """Plotfile."""
+        result = plotfile("fig1.png", create_dir=False)
+        assert result == mock_project / "plots" / "fig1.png"
+
+    def test_scriptfile(self, mock_project):
+        """Scriptfile."""
+        result = scriptfile("run.py", create_dir=False)
+        assert result == mock_project / "scripts" / "run.py"
+
+    def test_notebookfile(self, mock_project):
+        """Notebookfile."""
+        result = notebookfile("analysis.ipynb", create_dir=False)
+        assert result == mock_project / "notebooks" / "analysis.ipynb"
+
+
+# ---------------------------------------------------------------------------
+# savename tests
+# ---------------------------------------------------------------------------
+
+
+class TestSavename:
+    """Tests for the savename() parameter-to-filename helper."""
+
+    def test_basic_params(self):
+        """Basic params."""
+        result = savename({"alpha": 0.5, "n": 100})
+        assert result == "alpha=0.5_n=100.h5"
+
+    def test_keys_are_sorted(self):
+        """Keys are sorted."""
+        result = savename({"z": 1, "a": 2}, suffix="")
+        assert result == "a=2_z=1"
+
+    def test_custom_suffix(self):
+        """Custom suffix."""
+        result = savename({"lr": 0.01}, suffix=".csv")
+        assert result == "lr=0.01.csv"
+
+    def test_custom_connector(self):
+        """Custom connector."""
+        result = savename({"a": 1, "b": 2}, connector=",", suffix="")
+        assert result == "a=1,b=2"
+
+    def test_float_digits_rounds(self):
+        """Float digits rounds."""
+        result = savename({"alpha": 0.6666666}, digits=2, suffix="")
+        assert result == "alpha=0.67"
+
+    def test_float_trailing_zeros_stripped(self):
+        """Float trailing zeros stripped."""
+        result = savename({"x": 1.0}, suffix="")
+        assert result == "x=1"
+
+    def test_integer_value(self):
+        """Integer value."""
+        result = savename({"n": 100}, suffix="")
+        assert result == "n=100"
+
+    def test_bool_value(self):
+        """Bool value."""
+        result = savename({"flag": True}, suffix="")
+        assert result == "flag=True"
+
+    def test_string_value(self):
+        """String value."""
+        result = savename({"method": "euler"}, suffix="")
+        assert result == "method=euler"
+
+    def test_empty_dict_returns_only_suffix(self):
+        """Empty dict returns only suffix."""
+        result = savename({}, suffix=".h5")
+        assert result == ".h5"
+
+    def test_ignore_keys(self):
+        """Ignore keys."""
+        result = savename({"a": 1, "b": 2, "c": 3}, ignore_keys=["b"], suffix="")
+        assert result == "a=1_c=3"
+
+    def test_access_function(self):
+        """Access function."""
+        result = savename({"x": [1, 2, 3]}, access=len, suffix="")
+        assert result == "x=3"
+
+    def test_deterministic_across_calls(self):
+        """Deterministic across calls."""
+        params = {"lr": 0.01, "n": 100, "method": "euler"}
+        assert savename(params) == savename(params)
+
+
+# ---------------------------------------------------------------------------
+# HDF5 I/O tests
+# ---------------------------------------------------------------------------
+
+
+class TestHDF5IO:
+    """Tests for save_data, load_data, load_selective, list_data_files, data_info."""
+
+    @pytest.fixture()
+    def mock_project(self, tmp_path):
+        """Mock project."""
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
+        with (
+            patch("pywatson.utils._PROJECT_ROOT", tmp_path),
+            patch("pywatson.utils.find_project_root", return_value=tmp_path),
+        ):
+            yield tmp_path
+
+    def test_roundtrip_numpy_array(self, mock_project):
+        """Roundtrip numpy array."""
+        arr = np.array([1.0, 2.0, 3.0])
+        save_data({"x": arr}, "rt_array")
+        loaded = load_data("rt_array")
+        np.testing.assert_array_equal(loaded["x"], arr)
+
+    def test_roundtrip_2d_array(self, mock_project):
+        """Roundtrip 2d array."""
+        arr = np.arange(12).reshape(3, 4)
+        save_data({"matrix": arr}, "rt_2d")
+        loaded = load_data("rt_2d")
+        np.testing.assert_array_equal(loaded["matrix"], arr)
+
+    def test_roundtrip_int_scalar(self, mock_project):
+        """Roundtrip int scalar."""
+        save_data({"count": 42}, "rt_int")
+        loaded = load_data("rt_int")
+        assert int(loaded["count"]) == 42
+
+    def test_roundtrip_float_scalar(self, mock_project):
+        """Roundtrip float scalar."""
+        save_data({"score": 3.14}, "rt_float")
+        loaded = load_data("rt_float")
+        assert abs(float(loaded["score"]) - 3.14) < 1e-6
+
+    def test_roundtrip_string(self, mock_project):
+        """Roundtrip string."""
+        save_data({"label": "hello"}, "rt_str")
+        loaded = load_data("rt_str")
+        assert loaded["label"] == "hello"
+
+    def test_roundtrip_list(self, mock_project):
+        """Roundtrip list."""
+        save_data({"values": [1, 2, 3, 4]}, "rt_list")
+        loaded = load_data("rt_list")
+        np.testing.assert_array_equal(loaded["values"], [1, 2, 3, 4])
+
+    def test_metadata_is_preserved(self, mock_project):
+        """Metadata is preserved."""
+        meta = {"param_a": "value_a", "lr": 0.01}
+        save_data({"x": 1}, "meta_test", metadata=meta)
+        loaded = load_data("meta_test")
+        assert loaded["_metadata"]["param_a"] == "value_a"
+        assert loaded["_metadata"]["lr"] == 0.01
+
+    def test_metadata_has_created_at(self, mock_project):
+        """Metadata has created at."""
+        save_data({"x": 1}, "timestamp_test")
+        loaded = load_data("timestamp_test")
+        assert "created_at" in loaded["_metadata"]
+
+    def test_auto_adds_h5_extension_on_save(self, mock_project):
+        """Auto adds h5 extension on save."""
+        save_data({"v": 1}, "noext")
+        assert (mock_project / "data" / "noext.h5").exists()
+
+    def test_auto_adds_h5_extension_on_load(self, mock_project):
+        """Auto adds h5 extension on load."""
+        save_data({"v": 1}, "noext2")
+        loaded = load_data("noext2")  # no .h5 suffix
+        assert "v" in loaded
+
+    def test_load_with_keys_filters(self, mock_project):
+        """Load with keys filters."""
+        save_data({"a": np.array([1]), "b": np.array([2]), "c": np.array([3])}, "keytest")
+        loaded = load_data("keytest", keys=["a"])
+        assert "a" in loaded
+        assert "b" not in loaded
+        assert "c" not in loaded
+
+    def test_load_selective_returns_requested_keys(self, mock_project):
+        """Load selective returns requested keys."""
+        save_data({"a": np.array([10]), "b": np.array([20])}, "selective")
+        loaded = load_selective("selective", ["b"])
+        assert "b" in loaded
+        assert "a" not in loaded
+
+    def test_load_missing_file_raises_file_not_found(self, mock_project):
+        """Load missing file raises file not found."""
+        with pytest.raises(FileNotFoundError):
+            load_data("this_file_does_not_exist")
+
+    def test_list_data_files_returns_saved_files(self, mock_project):
+        """List data files returns saved files."""
+        save_data({"x": 1}, "file_a")
+        save_data({"y": 2}, "file_b")
+        files = list_data_files()
+        names = {f.name for f in files}
+        assert "file_a.h5" in names
+        assert "file_b.h5" in names
+
+    def test_list_data_files_empty_when_no_files(self, mock_project):
+        """List data files empty when no files."""
+        assert list_data_files() == []
+
+    def test_list_data_files_empty_when_no_data_dir(self, tmp_path):
+        """List data files empty when no data dir."""
+        # data/ doesn't exist at all
+        with (
+            patch("pywatson.utils._PROJECT_ROOT", tmp_path),
+            patch("pywatson.utils.find_project_root", return_value=tmp_path),
+        ):
+            assert list_data_files() == []
+
+    def test_data_info_structure(self, mock_project):
+        """Data info structure."""
+        save_data({"arr": np.array([1, 2, 3])}, "info_test")
+        info = data_info("info_test")
+        assert "filepath" in info
+        assert "size_bytes" in info
+        assert "modified" in info
+        assert "metadata" in info
+        assert "datasets" in info
+        assert "arr" in info["datasets"]
+
+    def test_data_info_dataset_shape(self, mock_project):
+        """Data info dataset shape."""
+        save_data({"arr": np.zeros((5, 3))}, "shape_test")
+        info = data_info("shape_test")
+        assert info["datasets"]["arr"]["shape"] == (5, 3)
+
+    def test_data_info_raises_for_missing_file(self, mock_project):
+        """Data info raises for missing file."""
+        with pytest.raises(FileNotFoundError):
+            data_info("not_there")
+
+
+# ---------------------------------------------------------------------------
+# Array convenience I/O tests
+# ---------------------------------------------------------------------------
+
+
+class TestArrayIO:
+    """Tests for save_array and load_array."""
+
+    @pytest.fixture()
+    def mock_project(self, tmp_path):
+        """Mock project."""
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
+        with (
+            patch("pywatson.utils._PROJECT_ROOT", tmp_path),
+            patch("pywatson.utils.find_project_root", return_value=tmp_path),
+        ):
+            yield tmp_path
+
+    def test_1d_array_roundtrip(self, mock_project):
+        """1d array roundtrip."""
+        arr = np.array([1.0, 2.0, 3.0])
+        save_array(arr, "vec")
+        loaded = load_array("vec")
+        np.testing.assert_array_equal(loaded, arr)
+
+    def test_2d_array_roundtrip(self, mock_project):
+        """2d array roundtrip."""
+        arr = np.arange(12).reshape(3, 4)
+        save_array(arr, "matrix")
+        loaded = load_array("matrix")
+        np.testing.assert_array_equal(loaded, arr)
+
+    def test_load_array_by_name(self, mock_project):
+        """Load array by name."""
+        arr = np.array([7, 8, 9])
+        save_array(arr, "named")
+        loaded = load_array("named", array_name="named")
+        np.testing.assert_array_equal(loaded, arr)
+
+    def test_load_array_wrong_name_raises_key_error(self, mock_project):
+        """Load array wrong name raises key error."""
+        arr = np.array([1])
+        save_array(arr, "onekey")
+        with pytest.raises(KeyError, match="wrong_key"):
+            load_array("onekey", array_name="wrong_key")
+
+    def test_load_array_first_key_by_default(self, mock_project):
+        """load_array with no array_name returns the first (and only) dataset."""
+        arr = np.array([42])
+        save_array(arr, "singlekey")
+        loaded = load_array("singlekey")
+        np.testing.assert_array_equal(loaded, arr)
+
+
+# ---------------------------------------------------------------------------
+# collect_results tests
+# ---------------------------------------------------------------------------
+
+
+class TestCollectResults:
+    """Tests for collect_results()."""
+
+    @pytest.fixture()
+    def mock_project(self, tmp_path):
+        """Mock project."""
+        data_dir = tmp_path / "data"
+        data_dir.mkdir()
+        with (
+            patch("pywatson.utils._PROJECT_ROOT", tmp_path),
+            patch("pywatson.utils.find_project_root", return_value=tmp_path),
+        ):
+            yield tmp_path
+
+    def test_returns_empty_when_no_files(self, mock_project):
+        """Returns empty when no files."""
+        assert collect_results() == []
+
+    def test_collects_all_h5_files(self, mock_project):
+        """Collects all h5 files."""
+        save_data({"x": 1.0}, "run_a")
+        save_data({"x": 2.0}, "run_b")
+        results = collect_results()
+        assert len(results) == 2
+
+    def test_each_result_has_filepath_key(self, mock_project):
+        """Each result has filepath key."""
+        save_data({"v": 42}, "single")
+        results = collect_results()
+        assert len(results) == 1
+        assert "_filepath" in results[0]
+
+    def test_each_result_contains_data(self, mock_project):
+        """Each result contains data."""
+        save_data({"value": np.array([1, 2, 3])}, "with_data")
+        results = collect_results()
+        assert any("value" in r for r in results)
