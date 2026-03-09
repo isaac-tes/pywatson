@@ -25,6 +25,26 @@ modern Python tooling.
 
 ## Quick Start
 
+```bash
+# Install pywatson as a global tool (no clone required)
+uv tool install git+https://github.com/isaac-tes/pywatson.git
+
+# Scaffold a new project
+pywatson init my-analysis \
+  --author-name "Jane Doe" \
+  --author-email "jane@university.edu" \
+  --description "My analysis project"
+
+# Enter the project and start working
+cd my-analysis
+uv sync            # install all dependencies
+uv run pytest      # run the test suite
+```
+
+> **Detailed guide** — see [docs/QUICKSTART.md](docs/QUICKSTART.md) for full
+> installation options (including dev/clone workflow), all project types,
+> CLI flags, and an end-to-end scientific workflow walkthrough.
+
 ### Prerequisites
 
 - Python 3.12+
@@ -34,7 +54,7 @@ modern Python tooling.
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-### Install
+### Install (dev / clone workflow)
 
 ```bash
 git clone https://github.com/isaac-tes/pywatson.git
@@ -45,14 +65,17 @@ uv sync
 ### Create a Project
 
 ```bash
-# Interactive mode (recommended) -- prompts for type and license
+# Recommended: new `pywatson` CLI
+pywatson init my-analysis
+
+# Legacy alias (still supported)
+pywatson-init my-analysis
+
+# Interactive mode via the bash helper
 ./create-project.sh -i
 
-# Quick mode with defaults (default type, MIT license)
-./create-project.sh my-analysis
-
-# Full control via CLI
-uv run drwatson-init my-project \
+# Full control — all flags
+pywatson init my-project \
   --author-name "Jane Doe" \
   --author-email "jane@university.edu" \
   --description "Quantum spin chain simulations" \
@@ -107,8 +130,11 @@ my-project/
 ## CLI Reference
 
 ```
-uv run drwatson-init [OPTIONS] PROJECT_NAME
+pywatson [--version] [--help]
+pywatson init [OPTIONS] PROJECT_NAME
 ```
+
+`pywatson-init PROJECT_NAME` is a backward-compatible alias for `pywatson init`.
 
 | Option | Default | Description |
 |--------|---------|-------------|
@@ -176,7 +202,7 @@ dependencies:
 ```
 
 ```bash
-uv run drwatson-init my-project --env-file environment.yml
+pywatson init my-project --env-file environment.yml
 ```
 
 ## Development
@@ -198,8 +224,8 @@ uv run ruff format src/ tests/
 
 | Component | Description |
 |-----------|-------------|
-| `src/pywatson/core.py` | `ProjectScaffolder` class and Click CLI |
-| `src/pywatson/drwatson.py` | DrWatson.jl-style utilities (copied into generated projects) |
+| `src/pywatson/core.py` | `ProjectScaffolder` class and Click CLI (`pywatson init`) |
+| `src/pywatson/utils.py` | DrWatson.jl-style utilities (copied into generated projects) |
 | `src/pywatson/templates/` | Jinja2 templates for generated project files |
 | `create-project.sh` | Interactive bash wrapper for the CLI |
 | `tests/` | pytest suite (scaffolding + template rendering tests) |

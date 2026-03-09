@@ -1,0 +1,433 @@
+# PyWatson Quickstart Guide
+
+This guide walks you through everything you need to go from zero to a fully
+working reproducible scientific Python project in minutes.
+
+---
+
+## Table of Contents
+
+1. [Installation](#installation)
+2. [Creating Your First Project](#creating-your-first-project)
+3. [Project Types](#project-types)
+4. [Generated Project Structure](#generated-project-structure)
+5. [Using the DrWatson Utilities](#using-the-drwatson-utilities)
+   - [Path Management](#path-management)
+   - [Parameter-Based Filenames](#parameter-based-filenames)
+   - [Saving and Loading Data](#saving-and-loading-data)
+   - [Smart Caching with `produce_or_load`](#smart-caching-with-produce_or_load)
+   - [Git-Tagged Saves with `tagsave`](#git-tagged-saves-with-tagsave)
+   - [Collecting Results](#collecting-results)
+6. [Typical Scientific Workflow](#typical-scientific-workflow)
+7. [CLI Quick Reference](#cli-quick-reference)
+
+---
+
+## Installation
+
+### Option A — Install as a global tool (no clone required, recommended)
+
+```bash
+# Install uv if you haven't already
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Install pywatson as a global tool from GitHub
+uv tool install git+https://github.com/isaac-tes/pywatson.git
+
+# Verify
+pywatson --version
+```
+
+The `pywatson` command is now available everywhere on your machine.
+
+### Option B — Install from PyPI (once published)
+
+```bash
+uv tool install pywatson
+# or
+pip install pywatson
+```
+
+### Option C — Developer / contributor clone
+
+```bash
+git clone https://github.com/isaac-tes/pywatson.git
+cd pywatson
+uv sync          # creates .venv and installs all deps including dev tools
+
+# Now use the in-repo command
+uv run pywatson --version
+# or activate the venv
+source .venv/bin/activate && pywatson --version
+```
+
+---
+
+## Creating Your First Project
+
+```bash
+# Simplest invocation — prompts for author info and description
+pywatson init my-analysis
+
+# One-liner with all info up front
+pywatson init my-analysis \
+  --author-name "Jane Doe" \
+  --author-email "jane@university.edu" \
+  --description "Spin-chain Monte Carlo study"
+
+# Full project (adds CI, Makefile, CONTRIBUTING, CHANGELOG)
+pywatson init my-analysis \
+  --project-type full \
+  --license BSD-3-Clause \
+  --python-version 3.12 \
+  --linting strict \
+  --author-name "Jane Doe" \
+  --author-email "jane@university.edu" \
+  --description "Spin-chain Monte Carlo study"
+
+# Import dependencies from an existing conda environment.yml
+pywatson init my-analysis --env-file environment.yml
+```
+
+After scaffolding, enter the project and finish setup:
+
+```bash
+cd my-analysis
+uv sync          # install all dependencies into .venv
+uv run pytest    # confirm tests pass (should be 2/2 green)
+```
+
+### Legacy / backward-compatible alias
+
+`pywatson-init` is still fully supported as a drop-in alias:
+
+```bash
+pywatson-init my-analysis --author-name "Jane" --author-email "jane@uni.edu"
+```
+
+---
+
+## Project Types
+
+| Type | Use case | Extras |
+|------|----------|--------|
+| `default` | Standard scientific project | `data/{sims,exp_raw,exp_pro}`, `_research/`, `notebooks/`, `plots/` |
+| `minimal` | Lightweight / tooling-only | `src/`, `data/`, `scripts/`, `tests/`, `docs/` (no notebooks, no _research) |
+| `full` | Publication-ready repository | Everything in `default` + `config/`, `Makefile`, `.github/workflows/ci.yml`, `CONTRIBUTING.md`, `CHANGELOG.md` |
+
+---
+
+## Generated Project Structure
+
+```
+my-analysis/
+├── src/my_analysis/
+│   ├── __init__.py         # Public API — re-exports DrWatson utilities
+│   └── core.py             # Your project-specific analysis functions
+├── scripts/
+│   ├── generate_data.py    # Example data generation script
+│   ├── analyze_data.py     # Example analysis workflow
+│   └── pywatson_showcase.py  # Interactive API demo
+├── notebooks/              # Jupyter notebooks
+├── tests/
+│   └── test_core.py        # pytest test suite
+├── data/
+│   ├── sims/               # Simulation outputs (HDF5 by default)
+│   ├── exp_raw/            # Raw experimental data  [default type]
+│   └── exp_pro/            # Processed data         [default type]
+├── plots/                  # Generated figures
+├── _research/              # WIP scripts & scratch work (not committed by default)
+│   └── tmp/                # Temporary files (git-ignored)
+├── docs/                   # Documentation
+├── pywatson_utils.py       # Copied DrWatson utilities (editable in-project)
+├── pyproject.toml
+├── ruff.toml
+├── LICENSE
+└── README.md
+```
+
+> **Note**: The file `pywatson_utils.py` is copied verbatim from pywatson's
+> `src/pywatson/utils.py` into each generated project, so projects are
+> fully self-contained and do not depend on pywatson at runtime.
+
+---
+
+## Using the DrWatson Utilities
+
+All generated projects expose the DrWatson utilities through the package
+`__init__.py`. Import them as:
+
+```python
+from my_analysis import (
+    datadir, plotsdir, scriptsdir, notebooksdir,
+    savename, save_data, load_data, load_selective,
+    tagsave, produce_or_load, collect_results,
+)
+```
+
+### Path Management
+
+PyWatson functions find the project root automatically by walking up the
+directory tree until they find `pyproject.toml` (or `.git`). This means
+they work correctly regardless of which subdirectory your script runs in.
+
+```python
+from my_analysis import datadir, plotsdir, scriptsdir, notebooksdir, srcdir
+
+# Always returns the absolute path — works from any subdirectory
+datadir()                      # Path(".../my-analysis/data")
+datadir("sims")                # Path(".../my-analysis/data/sims")
+datadir("sims/run_001")        # Path(".../my-analysis/data/sims/run_001")
+
+plotsdir()                     # Path(".../my-analysis/plots")
+plotsdir("figures", "final")   # Path(".../my-analysis/plots/figures/final")
+
+scriptsdir()                   # Path(".../my-analysis/scripts")
+notebooksdir()                 # Path(".../my-analysis/notebooks")
+srcdir()                       # Path(".../my-analysis/src")
+
+# Convenience file helpers
+from my_analysis import datafile, plotfile
+datafile("results", "experiment.h5")  # Path(".../data/results/experiment.h5")
+plotfile("figure1.pdf")               # Path(".../plots/figure1.pdf")
+```
+
+### Parameter-Based Filenames
+
+`savename` creates deterministic, human-readable filenames from a dictionary
+of parameters. Keys are sorted alphabetically, so the filename is stable
+across runs.
+
+```python
+from my_analysis import savename
+
+params = {"alpha": 0.5, "N": 100, "method": "rk4", "dt": 0.01}
+savename(params)              # "N=100_alpha=0.5_dt=0.01_method=rk4"
+savename(params, "h5")        # "N=100_alpha=0.5_dt=0.01_method=rk4.h5"
+savename(params, "h5", prefix="run")  # "run_N=100_alpha=0.5_dt=0.01_method=rk4.h5"
+
+# Combine with datadir for a full path
+filepath = datadir("sims") / savename(params, "h5")
+```
+
+### Saving and Loading Data
+
+```python
+import numpy as np
+from my_analysis import save_data, load_data, load_selective, list_data_files
+
+# --- Save ---
+data = {
+    "time": np.linspace(0, 10, 1000),
+    "signal": np.sin(np.linspace(0, 10, 1000)),
+}
+metadata = {"sensor": "A", "gain": 2.0, "notes": "baseline run"}
+
+save_data(data, "experiment_001", metadata=metadata)
+# Saves to: data/experiment_001.h5
+# Metadata + automatic timestamp are stored as HDF5 attributes.
+
+# Save into a subdirectory
+save_data(data, "baseline", subfolder="sims/run_001", metadata=metadata)
+# Saves to: data/sims/run_001/baseline.h5
+
+# --- Load ---
+result = load_data("experiment_001")
+result["time"]        # numpy array
+result["signal"]      # numpy array
+result["_metadata"]   # dict: {"sensor": "A", "gain": 2.0, ..., "timestamp": ...}
+
+# Load only specific datasets (efficient for large files)
+partial = load_selective("experiment_001", keys=["signal"])
+
+# List all .h5 files in data/
+for path in list_data_files():
+    print(path)
+```
+
+### Smart Caching with `produce_or_load`
+
+`produce_or_load` is the centrepiece of reproducible workflows.  It calls
+your function **the first time** and saves the result; on subsequent calls
+with the **same parameters** it skips the computation and loads from disk.
+
+```python
+import numpy as np
+from my_analysis import produce_or_load, savename
+
+def run_simulation(params: dict) -> dict:
+    """Expensive Monte Carlo simulation."""
+    N = params["N"]
+    beta = params["beta"]
+    # ... thousands of iterations ...
+    energy = np.random.randn(N)   # placeholder
+    return {"energy": energy, "magnetisation": energy.mean()}
+
+params = {"N": 10_000, "beta": 0.44, "seed": 42}
+
+# First call: runs simulation, saves result automatically
+data, filepath = produce_or_load(run_simulation, params)
+print(f"Loaded from: {filepath}")
+
+# Second call: loads from disk — simulation is NOT re-run
+data, filepath = produce_or_load(run_simulation, params)
+
+# Use a custom subfolder
+data, filepath = produce_or_load(run_simulation, params, subfolder="sims/ising")
+
+# The file path will be something like:
+#   data/sims/ising/N=10000_beta=0.44_seed=42.h5
+```
+
+### Git-Tagged Saves with `tagsave`
+
+`tagsave` wraps `save_data` and automatically embeds the current git commit
+hash, branch, and dirty status into the saved metadata. Use it for any data
+you want to be able to trace back to a specific version of your code.
+
+```python
+from my_analysis import tagsave
+
+data = {"result": computed_array}
+tagsave(data, "final_result", metadata={"run_id": "exp_42"})
+
+# Metadata will include:
+# {
+#   "git_commit": "a3f9c1e",
+#   "git_branch": "main",
+#   "git_dirty": False,
+#   "run_id": "exp_42",
+#   "timestamp": "2025-03-09T10:00:00"
+# }
+```
+
+### Collecting Results
+
+`collect_results` loads all HDF5 files from a directory into a single
+pandas DataFrame — one row per file.
+
+```python
+from my_analysis import collect_results
+
+# Aggregate every .h5 file in data/sims/
+df = collect_results(subfolder="sims")
+print(df.head())
+#     N  beta  seed  energy_mean  ...
+# 0  1000  0.3  42   -0.152  ...
+# 1  1000  0.4  42   -0.438  ...
+# ...
+
+# Filter by parameter values
+high_beta = df[df["beta"] > 0.4]
+```
+
+---
+
+## Typical Scientific Workflow
+
+Below is an end-to-end example that strings everything together.
+
+### 1 — Generate and save raw data
+
+```python
+# scripts/generate_data.py
+import numpy as np
+from my_analysis import datadir, savename, tagsave
+
+PARAMS = [
+    {"N": 1000, "beta": 0.3, "seed": 0},
+    {"N": 1000, "beta": 0.44, "seed": 0},
+    {"N": 1000, "beta": 0.6, "seed": 0},
+]
+
+for p in PARAMS:
+    rng = np.random.default_rng(p["seed"])
+    energy = rng.normal(loc=-p["beta"], scale=1.0, size=p["N"])
+    data = {"energy": energy}
+    filename = savename(p)
+    tagsave(data, filename, subfolder="sims/ising", metadata=p)
+    print(f"Saved {filename}")
+```
+
+### 2 — Analyse with smart caching
+
+```python
+# scripts/analyze_data.py
+import numpy as np
+from my_analysis import produce_or_load, collect_results
+
+def compute_statistics(params: dict) -> dict:
+    """Load raw data and compute summary statistics."""
+    from my_analysis import load_data, savename
+    raw = load_data(savename(params), subfolder="sims/ising")
+    energy = raw["energy"]
+    return {
+        "mean_energy": np.array([energy.mean()]),
+        "std_energy": np.array([energy.std()]),
+        "N": np.array([params["N"]]),
+        "beta": np.array([params["beta"]]),
+    }
+
+params = {"N": 1000, "beta": 0.44, "seed": 0}
+results, path = produce_or_load(compute_statistics, params, subfolder="sims/stats")
+print(results)
+```
+
+### 3 — Collect and plot
+
+```python
+# scripts/plot_results.py
+import matplotlib.pyplot as plt
+from my_analysis import collect_results, plotfile
+
+df = collect_results(subfolder="sims/stats")
+df = df.sort_values("beta")
+
+fig, ax = plt.subplots()
+ax.errorbar(df["beta"], df["mean_energy"], yerr=df["std_energy"], fmt="o-")
+ax.set_xlabel("β (inverse temperature)")
+ax.set_ylabel("⟨E⟩")
+ax.set_title("Energy vs. temperature")
+fig.savefig(plotfile("energy_vs_beta.pdf"))
+print("Plot saved.")
+```
+
+---
+
+## CLI Quick Reference
+
+```
+pywatson [OPTIONS] COMMAND [ARGS]...
+
+Options:
+  --version  Show the version and exit.
+  --help     Show this message and exit.
+
+Commands:
+  init  Create a new Python project with modern tooling and best practices.
+```
+
+```
+pywatson init [OPTIONS] PROJECT_NAME
+
+Options:
+  -p, --path PATH                  Directory to create the project in.  [default: .]
+  --author-name TEXT               Author name.
+  --author-email TEXT              Author email.
+  --description TEXT               Short project description.
+  -t, --project-type [default|minimal|full]
+                                   Project structure type.  [default: default]
+  --license [MIT|BSD-3-Clause|Apache-2.0|ISC]
+                                   License for the generated project.  [default: MIT]
+  --python-version TEXT            Target Python version (e.g. 3.11, 3.12).  [default: 3.12]
+  --linting [minimal|strict]       Ruff ruleset.  [default: minimal]
+  --type-checker [ty|mypy|none]    Type checker for the generated project.  [default: ty]
+  --env-file PATH                  environment.yml to import dependencies from.
+  --force                          Overwrite existing directory.
+  --help                           Show this message and exit.
+```
+
+---
+
+*Generated by [PyWatson](https://github.com/isaac-tes/pywatson) — inspired by
+[DrWatson.jl](https://juliadynamics.github.io/DrWatson.jl/stable/).*

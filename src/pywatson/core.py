@@ -617,7 +617,16 @@ def load_environment_file(env_file: Path) -> tuple[list[str], list[str]]:
 # ==========================================================================
 
 
-@click.command()
+@click.group()
+@click.version_option(version=__version__, prog_name="pywatson")
+def cli() -> None:
+    """PyWatson -- Python scientific project manager inspired by DrWatson.jl.
+
+    Use 'pywatson init PROJECT_NAME' to scaffold a new project.
+    """
+
+
+@cli.command("init")
 @click.argument("project_name")
 @click.option(
     "--path",
@@ -676,7 +685,7 @@ def load_environment_file(env_file: Path) -> tuple[list[str], list[str]]:
     help="Environment file (environment.yml) to import dependencies from.",
 )
 @click.option("--force", is_flag=True, help="Overwrite existing directory.")
-def create_project(
+def init_project(
     project_name: str,
     path: str,
     author_name: str,
@@ -814,5 +823,11 @@ def create_project(
         sys.exit(1)
 
 
+# Backward-compatible entry point alias for the `pywatson-init` script.
+# Allows the old entry point (`pywatson.core:create_project`) to keep working
+# while the canonical invocation is now `pywatson init PROJECT_NAME`.
+create_project = init_project
+
+
 if __name__ == "__main__":
-    create_project()
+    cli()
