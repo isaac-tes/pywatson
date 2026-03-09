@@ -70,6 +70,7 @@ class ProjectScaffolder:
         python_version: str = "3.12",
         linting_mode: str = "minimal",
         type_checker: str = "ty",
+        docker: bool = False,
     ) -> None:
         self.project_name = project_name
         self.project_path = project_path
@@ -79,6 +80,7 @@ class ProjectScaffolder:
         self.python_version = python_version
         self.linting_mode = linting_mode
         self.type_checker = type_checker
+        self.docker = docker
 
         # Validate project_type
         if self.project_type not in PROJECT_TYPES:
@@ -547,6 +549,56 @@ class ProjectScaffolder:
         (self.project_path / "CHANGELOG.md").write_text(changelog_content)
 
     # ------------------------------------------------------------------
+    # Docker files
+    # ------------------------------------------------------------------
+
+    def create_docker_files(self, author_name: str = "", author_email: str = "") -> None:
+        """Create Docker-related files for a reproducible project environment.
+
+        Generates:
+          - Dockerfile
+          - .dockerignore
+          - docker-compose.yml
+          - README_DOCKER.md
+          - .github/workflows/docker-publish.yml (if .github/workflows/ exists)
+
+        Args:
+            author_name: Author's full name (included in template context).
+            author_email: Author's email address (included in template context).
+        """
+        console.print("Creating Docker files...", style="bold blue")
+
+        context = self._base_context(author_name, author_email)
+
+        # Dockerfile
+        dockerfile_content = self._render_template("Dockerfile.jinja2", **context)
+        (self.project_path / "Dockerfile").write_text(dockerfile_content)
+
+        # .dockerignore
+        dockerignore_content = self._render_template("dockerignore.jinja2", **context)
+        (self.project_path / ".dockerignore").write_text(dockerignore_content)
+
+        # docker-compose.yml
+        compose_content = self._render_template("docker-compose.yml.jinja2", **context)
+        (self.project_path / "docker-compose.yml").write_text(compose_content)
+
+        # README_DOCKER.md
+        readme_docker_content = self._render_template("README_DOCKER.md.jinja2", **context)
+        (self.project_path / "README_DOCKER.md").write_text(readme_docker_content)
+
+        # .github/workflows/docker-publish.yml — only when the workflows dir exists
+        workflows_dir = self.project_path / ".github" / "workflows"
+        if workflows_dir.exists():
+            publish_content = self._render_template("docker-publish.yml.jinja2", **context)
+            (workflows_dir / "docker-publish.yml").write_text(publish_content)
+        else:
+            console.print(
+                "  Skipping docker-publish.yml (no .github/workflows/ directory). "
+                "Use --project-type full or create the directory manually.",
+                style="dim",
+            )
+
+    # ------------------------------------------------------------------
     # Notebook
     # ------------------------------------------------------------------
 
@@ -685,6 +737,12 @@ def cli() -> None:
     help="Environment file (environment.yml) to import dependencies from.",
 )
 @click.option("--force", is_flag=True, help="Overwrite existing directory.")
+@click.option(
+    "--docker",
+    is_flag=True,
+    default=False,
+    help="Scaffold Docker + docker-compose files for Zenodo reproducibility.",
+)
 def init_project(
     project_name: str,
     path: str,
@@ -697,8 +755,7 @@ def init_project(
     linting_mode: str,
     type_checker: str,
     env_file: Optional[str],
-    force: bool,
-) -> None:
+    force: bool,    docker: bool,) -> None:
     """Create a new Python project with modern tooling and best practices.
 
     This tool creates a complete project structure similar to DrWatson.jl
@@ -713,6 +770,7 @@ def init_project(
     console.print(f"  Python       : [cyan]{python_version}[/cyan]")
     console.print(f"  Linting      : [cyan]{linting_mode}[/cyan]")
     console.print(f"  Type checker : [cyan]{type_checker}[/cyan]")
+    console.print(f"  Docker       : [cyan]{docker}[/cyan]")
     console.print(f"  Working dir  : [dim]{Path.cwd()}[/dim]")
 
     project_path = Path(path) / project_name
@@ -764,6 +822,7 @@ def init_project(
         python_version=python_version,
         linting_mode=linting_mode,
         type_checker=type_checker,
+        docker=docker,
     )
 
     try:
@@ -803,6 +862,10 @@ def init_project(
         # 12. Full-type extras (Makefile, CI, CONTRIBUTING, CHANGELOG, config/)
         if project_type == "full":
             scaffolder.create_full_extras(author_name, author_email)
+
+        # 13. Docker files (optional, any project type)
+        if docker:
+            scaffolder.create_docker_files(author_name, author_email)
 
         console.print("\nProject created successfully!", style="bold green")
         console.print(f"\nProject location: [blue]{project_path.absolute()}[/blue]")

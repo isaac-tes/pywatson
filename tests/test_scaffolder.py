@@ -584,3 +584,145 @@ class TestFullProjectGeneration:
                 compile(content, str(py_file), "exec")
             except SyntaxError as e:
                 pytest.fail(f"Generated file {py_file} has invalid Python syntax: {e}")
+
+
+class TestDockerScaffolding:
+    """Tests for Docker-related scaffolding functionality."""
+
+    @pytest.fixture
+    def temp_project_dir(self):
+        """Create a temporary directory for test projects."""
+        temp_dir = Path(tempfile.mkdtemp())
+        yield temp_dir
+        if temp_dir.exists():
+            shutil.rmtree(temp_dir)
+
+    @pytest.fixture
+    def project_path(self, temp_project_dir):
+        """Create a project directory with expected structure for Docker tests."""
+        path = temp_project_dir / "docker_test_project"
+        path.mkdir()
+        return path
+
+    def test_docker_flag_defaults_false(self, project_path):
+        """Test that the docker flag defaults to False."""
+        scaffolder = ProjectScaffolder("docker-test", project_path)
+        assert scaffolder.docker is False
+
+    def test_docker_flag_true(self, project_path):
+        """Test that docker=True is stored on the scaffolder."""
+        scaffolder = ProjectScaffolder("docker-test", project_path, docker=True)
+        assert scaffolder.docker is True
+
+    def test_create_docker_files_without_workflows_dir(self, project_path):
+        """Test that core Docker files are created when .github/workflows/ is absent."""
+        scaffolder = ProjectScaffolder("docker-test", project_path)
+        scaffolder.create_docker_files("Test Author", "test@example.com")
+
+        assert (project_path / "Dockerfile").exists()
+        assert (project_path / ".dockerignore").exists()
+        assert (project_path / "docker-compose.yml").exists()
+        assert (project_path / "README_DOCKER.md").exists()
+        # docker-publish.yml must NOT be created when workflows dir is absent
+        assert not (project_path / ".github" / "workflows" / "docker-publish.yml").exists()
+
+    def test_create_docker_files_with_workflows_dir(self, project_path):
+        """Test that docker-publish.yml is created when .github/workflows/ exists."""
+        workflows_dir = project_path / ".github" / "workflows"
+        workflows_dir.mkdir(parents=True)
+
+        scaffolder = ProjectScaffolder("docker-test", project_path, project_type="full")
+        scaffolder.create_docker_files("Test Author", "test@example.com")
+
+        assert (project_path / "Dockerfile").exists()
+        assert (project_path / ".dockerignore").exists()
+        assert (project_path / "docker-compose.yml").exists()
+        assert (project_path / "README_DOCKER.md").exists()
+        assert (workflows_dir / "docker-publish.yml").exists()
+
+    def test_dockerfile_contains_python_version(self, project_path):
+        """Test that the Dockerfile references the configured python_version."""
+        scaffolder = ProjectScaffolder("docker-test", project_path)
+        scaffolder.create_docker_files("Test Author", "test@example.com")
+
+        content = (project_path / "Dockerfile").read_text()
+        assert scaffolder.python_version in content
+
+    def test_dockerfile_contains_uv(self, project_path):
+        """Test that the Dockerfile installs uv."""
+        scaffolder = ProjectScaffolder("docker-test", project_path)
+        scaffolder.create_docker_files("Test Author", "test@example.com")
+
+        content = (project_path / "Dockerfile").read_text()
+        assert "uv" in content
+
+    def test_docker_compose_contains_volume_mounts(self, project_path):
+        """Test that docker-compose.yml mounts data/ and plots/ volumes."""
+        scaffolder = ProjectScaffolder("docker-test", project_path)
+        scaffolder.create_docker_files("Test Author", "test@example.com")
+
+        content = (project_path / "docker-compose.yml").read_text()
+        assert "data" in content
+        assert "plots" in content
+
+    def test_readme_docker_contains_zenodo(self, project_path):
+        """Test that README_DOCKER.md contains Zenodo instructions."""
+        scaffolder = ProjectScaffolder("docker-test", project_path)
+        scaffolder.create_docker_files("Test Author", "test@example.com")
+
+        content = (project_path / "README_DOCKER.md").read_text()
+        assert "Zenodo" in content
+
+    def test_readme_docker_contains_project_name(self, project_path):
+        """Test that README_DOCKER.md references the project name."""
+        scaffolder = ProjectScaffolder("docker-test", project_path)
+        scaffolder.create_docker_files("Test Author", "test@example.com")
+
+        content = (project_path / "README_DOCKER.md").read_text()
+        assert "docker-test" in content
+
+    def test_docker_publish_yml_is_valid_yaml(self, project_path):
+        """Test that the rendered docker-publish.yml is valid YAML."""
+        import yaml
+
+        workflows_dir = project_path / ".github" / "workflows"
+        workflows_dir.mkdir(parents=True)
+
+        scaffolder = ProjectScaffolder("docker-test", project_path, project_type="full")
+        scaffolder.create_docker_files("Test Author", "test@example.com")
+
+        content = (workflows_dir / "docker-publish.yml").read_text()
+        parsed = yaml.safe_load(content)
+        assert isinstance(parsed, dict)
+        assert "jobs" in parsed
+
+    def test_dockerignore_excludes_data_and_plots(self, project_path):
+        """Test that .dockerignore excludes data/ and plots/ directories."""
+        scaffolder = ProjectScaffolder("docker-test", project_path)
+        scaffolder.create_docker_files("Test Author", "test@example.com")
+
+        content = (project_path / ".dockerignore").read_text()
+        assert "data/" in content
+        assert "plots/" in content
+
+    def test_docker_files_created_via_full_project_pipeline(self, temp_project_dir):
+        """Test Docker files are created correctly via create_full_extras + docker flag."""
+        project_path = temp_project_dir / "full_docker_project"
+        project_path.mkdir()
+
+        scaffolder = ProjectScaffolder(
+            "full-docker",
+            project_path,
+            project_type="full",
+            docker=True,
+        )
+        scaffolder.create_project_structure()
+        scaffolder.create_full_extras("Test Author", "test@example.com")
+        scaffolder.create_docker_files("Test Author", "test@example.com")
+
+        # Full project creates .github/workflows/, so docker-publish.yml should exist
+        assert (project_path / "Dockerfile").exists()
+        assert (project_path / ".dockerignore").exists()
+        assert (project_path / "docker-compose.yml").exists()
+        assert (project_path / "README_DOCKER.md").exists()
+        assert (project_path / ".github" / "workflows" / "docker-publish.yml").exists()
