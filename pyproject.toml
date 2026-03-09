@@ -7,7 +7,7 @@ license = {text = "MIT"}
 authors = [
     { name = "isaac-tes", email = "i.tesfaye@tu-berlin.de" }
 ]
-requires-python = ">=3.12"
+requires-python = ">=3.12.9,<3.13"
 keywords = ["scientific-computing", "project-management", "drwatson", "reproducibility", "hdf5"]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -91,3 +91,6 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+markers = [
+    "docker: end-to-end tests that require the Docker daemon (run with: uv run pytest -m docker)",
+]

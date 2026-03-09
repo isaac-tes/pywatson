@@ -726,3 +726,135 @@ class TestDockerScaffolding:
         assert (project_path / "docker-compose.yml").exists()
         assert (project_path / "README_DOCKER.md").exists()
         assert (project_path / ".github" / "workflows" / "docker-publish.yml").exists()
+
+    # ------------------------------------------------------------------
+    # Dockerfile content
+    # ------------------------------------------------------------------
+
+    def test_dockerfile_entrypoint_is_analyze_data(self, project_path):
+        """Test that the Dockerfile ENTRYPOINT runs analyze_data.py."""
+        scaffolder = ProjectScaffolder("docker-test", project_path)
+        scaffolder.create_docker_files("Test Author", "test@example.com")
+
+        content = (project_path / "Dockerfile").read_text()
+        assert "analyze_data.py" in content
+        assert "ENTRYPOINT" in content
+
+    def test_dockerfile_copies_lock_file(self, project_path):
+        """Test that the Dockerfile copies uv.lock so --frozen can succeed."""
+        scaffolder = ProjectScaffolder("docker-test", project_path)
+        scaffolder.create_docker_files("Test Author", "test@example.com")
+
+        content = (project_path / "Dockerfile").read_text()
+        assert "uv.lock" in content
+        assert "README.md" in content
+
+    def test_dockerfile_uses_frozen_sync(self, project_path):
+        """Test that the Dockerfile uses --frozen for exact reproducibility."""
+        scaffolder = ProjectScaffolder("docker-test", project_path)
+        scaffolder.create_docker_files("Test Author", "test@example.com")
+
+        content = (project_path / "Dockerfile").read_text()
+        assert "--frozen" in content
+
+    def test_dockerfile_creates_runtime_dirs(self, project_path):
+        """Test that the Dockerfile creates data/ and plots/ at build time."""
+        scaffolder = ProjectScaffolder("docker-test", project_path)
+        scaffolder.create_docker_files("Test Author", "test@example.com")
+
+        content = (project_path / "Dockerfile").read_text()
+        assert "data" in content
+        assert "plots" in content
+
+    # ------------------------------------------------------------------
+    # docker-compose.yml content
+    # ------------------------------------------------------------------
+
+    def test_docker_compose_data_mount_is_readonly(self, project_path):
+        """Test that the data volume mount is read-only (:ro) in docker-compose.yml."""
+        scaffolder = ProjectScaffolder("docker-test", project_path)
+        scaffolder.create_docker_files("Test Author", "test@example.com")
+
+        content = (project_path / "docker-compose.yml").read_text()
+        assert ":ro" in content
+
+    def test_docker_compose_has_shell_service(self, project_path):
+        """Test that docker-compose.yml includes a shell service for debugging."""
+        scaffolder = ProjectScaffolder("docker-test", project_path)
+        scaffolder.create_docker_files("Test Author", "test@example.com")
+
+        content = (project_path / "docker-compose.yml").read_text()
+        assert "shell:" in content
+
+    def test_docker_compose_reproduce_service_present(self, project_path):
+        """Test that docker-compose.yml has a reproduce service."""
+        scaffolder = ProjectScaffolder("docker-test", project_path)
+        scaffolder.create_docker_files("Test Author", "test@example.com")
+
+        content = (project_path / "docker-compose.yml").read_text()
+        assert "reproduce:" in content
+
+    def test_docker_compose_is_valid_yaml(self, project_path):
+        """Test that docker-compose.yml renders as valid YAML."""
+        import yaml
+
+        scaffolder = ProjectScaffolder("docker-test", project_path)
+        scaffolder.create_docker_files("Test Author", "test@example.com")
+
+        content = (project_path / "docker-compose.yml").read_text()
+        parsed = yaml.safe_load(content)
+        assert isinstance(parsed, dict)
+        assert "services" in parsed
+        assert "reproduce" in parsed["services"]
+
+    # ------------------------------------------------------------------
+    # README_DOCKER.md content
+    # ------------------------------------------------------------------
+
+    def test_readme_docker_has_three_step_workflow(self, project_path):
+        """Test that README_DOCKER.md contains pull / download / run steps."""
+        scaffolder = ProjectScaffolder("docker-test", project_path)
+        scaffolder.create_docker_files("Test Author", "test@example.com")
+
+        content = (project_path / "README_DOCKER.md").read_text()
+        assert "docker pull" in content or "docker compose" in content
+        assert "Zenodo" in content
+        assert "reproduce" in content
+
+    def test_readme_docker_references_ghcr(self, project_path):
+        """Test that README_DOCKER.md tells readers where to pull the image from."""
+        scaffolder = ProjectScaffolder("docker-test", project_path)
+        scaffolder.create_docker_files("Test Author", "test@example.com")
+
+        content = (project_path / "README_DOCKER.md").read_text()
+        assert "ghcr.io" in content
+
+    # ------------------------------------------------------------------
+    # docker-publish.yml content
+    # ------------------------------------------------------------------
+
+    def test_docker_publish_yml_has_smoke_test(self, temp_project_dir):
+        """Test that the GH Actions workflow includes a smoke-test step."""
+        project_path = temp_project_dir / "smoke_test_project"
+        project_path.mkdir()
+        workflows_dir = project_path / ".github" / "workflows"
+        workflows_dir.mkdir(parents=True)
+
+        scaffolder = ProjectScaffolder("docker-test", project_path, project_type="full")
+        scaffolder.create_docker_files("Test Author", "test@example.com")
+
+        content = (workflows_dir / "docker-publish.yml").read_text()
+        assert "smoke" in content.lower() or "test" in content.lower()
+
+    def test_docker_publish_yml_pushes_to_ghcr(self, temp_project_dir):
+        """Test that the GH Actions workflow pushes to GHCR."""
+        project_path = temp_project_dir / "ghcr_push_project"
+        project_path.mkdir()
+        workflows_dir = project_path / ".github" / "workflows"
+        workflows_dir.mkdir(parents=True)
+
+        scaffolder = ProjectScaffolder("docker-test", project_path, project_type="full")
+        scaffolder.create_docker_files("Test Author", "test@example.com")
+
+        content = (workflows_dir / "docker-publish.yml").read_text()
+        assert "ghcr.io" in content

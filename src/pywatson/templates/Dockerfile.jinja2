@@ -31,8 +31,10 @@ ENV PATH="/root/.local/bin:${PATH}"
 WORKDIR /workspace
 
 # ---- install Python dependencies ----
-# Copy only dependency files first for better layer caching
-COPY pyproject.toml ./
+# Copy lock file + metadata first for better layer caching.
+# uv.lock pins every dependency to an exact version — required by --frozen.
+# README.md is also needed because pyproject.toml references it as the readme.
+COPY pyproject.toml uv.lock README.md ./
 COPY src/ ./src/
 
 RUN uv sync --no-dev --frozen
