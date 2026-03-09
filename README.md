@@ -188,7 +188,12 @@ docker compose run reproduce
 # → plots appear in ./plots/
 ```
 
-> **Full guide** — see [docs/ZENODO.md](docs/ZENODO.md) for step-by-step
+> **New to Docker?** — see [docs/DOCKER_GUIDE.md](docs/DOCKER_GUIDE.md) for
+> a plain-language introduction: what Docker is, how to install it on
+> macOS/Linux/Windows, how the generated files work, and a cheat sheet of
+> the commands you'll actually use.
+>
+> **Zenodo deposit** — see [docs/ZENODO.md](docs/ZENODO.md) for step-by-step
 > instructions on depositing code and data on Zenodo, linking DOIs, and the
 > pre-paper reproducibility checklist.
 
@@ -289,6 +294,7 @@ uv run ruff format src/ tests/
 | License selection | -- | Yes |
 | CI generation | -- | Yes (full type) |
 | Docker reproducibility | -- | Yes (`--docker`) |
+| Docker beginner guide | -- | Yes ([docs/DOCKER_GUIDE.md](docs/DOCKER_GUIDE.md)) |
 | Zenodo deposit guide | -- | Yes ([docs/ZENODO.md](docs/ZENODO.md)) |
 
 ## License
