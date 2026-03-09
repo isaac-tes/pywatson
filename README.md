@@ -22,6 +22,10 @@ modern Python tooling.
 - **Git Integration** -- Automatic git commit info embedded in saved data
 - **License Selection** -- Choose MIT, BSD-3-Clause, Apache-2.0, or ISC at
   project creation time
+- **Docker & Zenodo Reproducibility** -- `--docker` flag scaffolds a
+  `Dockerfile`, `docker-compose.yml`, and a GitHub Actions publish workflow so
+  readers can reproduce your results with a single `docker compose run reproduce`
+  after downloading data from Zenodo
 
 ## Quick Start
 
@@ -81,6 +85,13 @@ pywatson init my-project \
   --description "Quantum spin chain simulations" \
   --project-type full \
   --license Apache-2.0
+
+# With Docker + Zenodo reproducibility scaffolding
+pywatson init my-project \
+  --author-name "Jane Doe" \
+  --author-email "jane@university.edu" \
+  --project-type full \
+  --docker
 ```
 
 ### Start Working
@@ -108,7 +119,7 @@ my-project/
 ├── src/my_project/
 │   ├── __init__.py         # Public API (DrWatson functions re-exported)
 │   ├── core.py             # Project-specific analysis functions
-│   └── drwatson.py         # Path management & HDF5 data utilities
+│   └── pywatson_utils.py   # Path management & HDF5 data utilities
 ├── scripts/
 │   ├── generate_data.py    # Example data generation
 │   └── analyze_data.py     # Example analysis workflow
@@ -145,11 +156,45 @@ pywatson init [OPTIONS] PROJECT_NAME
 | `--project-type`, `-t` | `default` | `default`, `minimal`, or `full` |
 | `--license` | `MIT` | `MIT`, `BSD-3-Clause`, `Apache-2.0`, or `ISC` |
 | `--env-file` | | Import dependencies from environment.yml |
+| `--docker` | | Scaffold Docker + Zenodo reproducibility files |
 | `--force` | | Overwrite existing directory |
+
+## Docker & Zenodo Reproducibility
+
+Pass `--docker` to any `pywatson init` invocation to scaffold a fully
+reproducible Docker environment alongside the standard project files.
+
+### What gets added
+
+| File | Purpose |
+|------|---------|
+| `Dockerfile` | Slim Python image, installs uv, runs `analyze_data.py` |
+| `.dockerignore` | Excludes `data/`, `plots/`, `.git/` from the image |
+| `docker-compose.yml` | `reproduce` service (mounts data ro, plots rw); `shell` service for debugging |
+| `README_DOCKER.md` | Reader-facing instructions: pull image → download Zenodo data → run |
+| `.github/workflows/docker-publish.yml` | CI: build → smoke-test → push to GHCR on every tag (`full` type only) |
+
+### Reader reproduction workflow
+
+```bash
+# 1. Pull the published image
+docker pull ghcr.io/YOUR_GITHUB_USERNAME/my-project:latest
+
+# 2. Download the data archive from the Zenodo DOI in README_DOCKER.md
+#    and unpack into ./data/
+
+# 3. Run the full analysis pipeline
+docker compose run reproduce
+# → plots appear in ./plots/
+```
+
+> **Full guide** — see [docs/ZENODO.md](docs/ZENODO.md) for step-by-step
+> instructions on depositing code and data on Zenodo, linking DOIs, and the
+> pre-paper reproducibility checklist.
 
 ## DrWatson-Style Workflow
 
-Generated projects include `drwatson.py` which provides these utilities:
+Generated projects include `pywatson_utils.py` which provides these utilities:
 
 ```python
 from my_project import (
@@ -243,6 +288,8 @@ uv run ruff format src/ tests/
 | HDF5 support | Yes | Yes |
 | License selection | -- | Yes |
 | CI generation | -- | Yes (full type) |
+| Docker reproducibility | -- | Yes (`--docker`) |
+| Zenodo deposit guide | -- | Yes ([docs/ZENODO.md](docs/ZENODO.md)) |
 
 ## License
 
