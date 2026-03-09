@@ -29,6 +29,20 @@ __version__ = "0.1.0"
 
 console = Console()
 
+
+def _git_config(key: str) -> str:
+    """Read a git global/local config value, return empty string if unavailable."""
+    try:
+        result = subprocess.run(
+            ["git", "config", key],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        return result.stdout.strip() if result.returncode == 0 else ""
+    except (subprocess.SubprocessError, FileNotFoundError):
+        return ""
+
 # Valid project types and their descriptions
 PROJECT_TYPES = {
     "default": "PyWatson standard (data/{sims, exp_raw, exp_pro})",
@@ -687,8 +701,8 @@ def cli() -> None:
     default=".",
     help="Directory to create the project in.",
 )
-@click.option("--author-name", prompt="Author name", help="Author name.")
-@click.option("--author-email", prompt="Author email", help="Author email.")
+@click.option("--author-name", prompt="Author name", default=lambda: _git_config("user.name"), show_default="git config user.name", help="Author name.")
+@click.option("--author-email", prompt="Author email", default=lambda: _git_config("user.email"), show_default="git config user.email", help="Author email.")
 @click.option(
     "--description",
     prompt="Project description",
@@ -890,6 +904,166 @@ def init_project(
 # Allows the old entry point (`pywatson.core:create_project`) to keep working
 # while the canonical invocation is now `pywatson init PROJECT_NAME`.
 create_project = init_project
+
+
+# ==========================================================================
+# Additional CLI subcommands
+# ==========================================================================
+
+
+@cli.command("status")
+def status_command() -> None:
+    """Show an overview of the current PyWatson project."""
+    from pathlib import Path
+    import json
+
+    # Try to find project root
+    cwd = Path.cwd()
+    root = None
+    cur = cwd
+    while cur != cur.parent:
+        if (cur / "pyproject.toml").exists() or (cur / ".git").exists():
+            root = cur
+            break
+        cur = cur.parent
+
+    if root is None:
+        console.print("[bold red]Not inside a PyWatson project.[/bold red]")
+        console.print("Hint: run 'pywatson init PROJECT_NAME' to create one.")
+        return
+
+    console.print(f"[bold green]PyWatson project[/bold green]: {root}")
+
+    # Read project name from pyproject.toml if possible
+    pyproject = root / "pyproject.toml"
+    if pyproject.exists():
+        content = pyproject.read_text()
+        import re as _re
+        m = _re.search(r'name\s*=\s*"([^"]+)"', content)
+        if m:
+            console.print(f"  Name       : [cyan]{m.group(1)}[/cyan]")
+
+    # Directory summary
+    dirs_of_interest = ["data", "plots", "scripts", "notebooks", "tests", "_research"]
+    console.print("\n[bold]Directories:[/bold]")
+    for d in dirs_of_interest:
+        p = root / d
+        if p.exists():
+            n_files = sum(1 for _ in p.rglob("*") if _.is_file())
+            console.print(f"  [green]✓[/green] {d:<14} ({n_files} files)")
+        else:
+            console.print(f"  [dim]– {d}[/dim]")
+
+    # Data files
+    data_dir = root / "data"
+    if data_dir.exists():
+        h5_files = list(data_dir.rglob("*.h5"))
+        npz_files = list(data_dir.rglob("*.npz"))
+        zarr_stores = list(data_dir.rglob("*.zarr"))
+        console.print("\n[bold]Data files:[/bold]")
+        console.print(f"  HDF5  (.h5) : {len(h5_files)}")
+        console.print(f"  NumPy (.npz): {len(npz_files)}")
+        console.print(f"  Zarr  (.zarr): {len(zarr_stores)}")
+
+    # Git status
+    try:
+        commit = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=root, capture_output=True, text=True, check=False
+        ).stdout.strip()
+        branch = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=root, capture_output=True, text=True, check=False
+        ).stdout.strip()
+        dirty = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=root, capture_output=True, text=True, check=False
+        ).stdout.strip()
+        console.print("\n[bold]Git:[/bold]")
+        console.print(f"  Branch  : {branch}")
+        console.print(f"  Commit  : {commit}")
+        console.print(f"  Clean   : {'[green]yes[/green]' if not dirty else '[yellow]no (uncommitted changes)[/yellow]'}")
+    except Exception:
+        pass
+
+
+@cli.command("sweep")
+@click.argument("params", nargs=-1, metavar="KEY=VAL[,VAL...] ...")
+@click.option("--suffix", default=".h5", show_default=True, help="File suffix.")
+@click.option("--connector", default="_", show_default=True, help="Connector between key=value pairs.")
+def sweep_command(params: tuple, suffix: str, connector: str) -> None:
+    """Print filenames for a parameter sweep.
+
+    Pass KEY=VAL or KEY=VAL1,VAL2,... arguments to generate all combinations.
+
+    \b
+    Example:
+      pywatson sweep alpha=0.1,0.5,1.0 N=100,1000 --suffix .h5
+    """
+    import itertools
+
+    if not params:
+        console.print("Provide at least one KEY=VAL argument.", style="yellow")
+        console.print("Example: pywatson sweep alpha=0.1,0.5 N=100,1000")
+        return
+
+    param_dict: dict = {}
+    for token in params:
+        if "=" not in token:
+            console.print(f"[red]Invalid token '{token}'. Expected KEY=VAL or KEY=V1,V2,...[/red]")
+            return
+        key, _, raw = token.partition("=")
+        vals_raw = raw.split(",")
+        coerced = []
+        for v in vals_raw:
+            try:
+                coerced.append(int(v))
+            except ValueError:
+                try:
+                    coerced.append(float(v))
+                except ValueError:
+                    coerced.append(v)
+        param_dict[key] = coerced
+
+    keys = list(param_dict.keys())
+    combos = list(itertools.product(*param_dict.values()))
+
+    from pywatson.utils import savename
+
+    console.print(f"[bold]{len(combos)} combinations:[/bold]")
+    for combo in combos:
+        d = dict(zip(keys, combo))
+        console.print(f"  {savename(d, suffix=suffix, connector=connector)}")
+
+
+@cli.command("summary")
+@click.option("--subdir", default=None, help="Subdirectory within data/ to summarise.")
+@click.option("--recursive", is_flag=True, default=True, help="Search recursively.")
+def summary_command(subdir: Optional[str], recursive: bool) -> None:
+    """Summarise HDF5 data files in the project data directory."""
+    from pywatson.utils import collect_results, datadir
+
+    try:
+        results = collect_results(subdir=subdir, recursive=recursive)
+    except RuntimeError as e:
+        console.print(f"[red]{e}[/red]")
+        return
+
+    if not results:
+        console.print("[yellow]No HDF5 files found.[/yellow]")
+        return
+
+    console.print(f"[bold green]{len(results)} file(s) found:[/bold green]")
+    for row in results:
+        fp = row.get("_filepath", "?")
+        meta = row.get("_metadata", {})
+        created = meta.get("created_at", "")
+        keys = [k for k in row if not k.startswith("_")]
+        console.print(f"  [cyan]{fp}[/cyan]")
+        if created:
+            console.print(f"    created : {created}")
+        if keys:
+            console.print(f"    datasets: {', '.join(keys)}")
 
 
 if __name__ == "__main__":

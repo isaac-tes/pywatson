@@ -14,10 +14,13 @@ working reproducible scientific Python project in minutes.
 5. [Using the DrWatson Utilities](#using-the-drwatson-utilities)
    - [Path Management](#path-management)
    - [Parameter-Based Filenames](#parameter-based-filenames)
+   - [Parameter Grid Expansion](#parameter-grid-expansion)
    - [Saving and Loading Data](#saving-and-loading-data)
    - [Smart Caching with `produce_or_load`](#smart-caching-with-produce_or_load)
    - [Git-Tagged Saves with `tagsave`](#git-tagged-saves-with-tagsave)
+   - [Atomic and Temporary Saves](#atomic-and-temporary-saves)
    - [Collecting Results](#collecting-results)
+   - [Reproducibility Helpers](#reproducibility-helpers)
 6. [Typical Scientific Workflow](#typical-scientific-workflow)
 7. [CLI Quick Reference](#cli-quick-reference)
 
@@ -199,7 +202,7 @@ of parameters. Keys are sorted alphabetically, so the filename is stable
 across runs.
 
 ```python
-from my_analysis import savename
+from my_analysis import savename, parse_savename
 
 params = {"alpha": 0.5, "N": 100, "method": "rk4", "dt": 0.01}
 savename(params)              # "N=100_alpha=0.5_dt=0.01_method=rk4"
@@ -208,6 +211,39 @@ savename(params, "h5", prefix="run")  # "run_N=100_alpha=0.5_dt=0.01_method=rk4.
 
 # Combine with datadir for a full path
 filepath = datadir("sims") / savename(params, "h5")
+
+# Parse a filename back to a parameter dict
+parse_savename("N=100_alpha=0.5_method=rk4.h5")
+# -> {"N": 100, "alpha": 0.5, "method": "rk4"}
+```
+
+---
+
+### Parameter Grid Expansion
+
+`dict_list` expands a dictionary of parameter lists into all Cartesian-product
+combinations — equivalent to DrWatson.jl's `dict_list`.
+
+```python
+from my_analysis import dict_list, savename
+
+all_params = dict_list({"alpha": [0.1, 0.5, 1.0], "N": [100, 1000]})
+# -> 6 dicts: {"alpha": 0.1, "N": 100}, {"alpha": 0.1, "N": 1000}, ...
+
+for p in all_params:
+    data = run_simulation(p)
+    save_data(data, savename(p), subdir="sims")
+```
+
+From the command line, `pywatson sweep` prints the same filenames without
+writing any code:
+
+```bash
+pywatson sweep alpha=0.1,0.5,1.0 N=100,1000 --suffix .h5
+# 6 combinations:
+#   N=100_alpha=0.1.h5
+#   N=100_alpha=0.5.h5
+#   ...
 ```
 
 ### Saving and Loading Data
@@ -215,8 +251,9 @@ filepath = datadir("sims") / savename(params, "h5")
 ```python
 import numpy as np
 from my_analysis import save_data, load_data, load_selective, list_data_files
+from my_analysis import save_npz, load_npz
 
-# --- Save ---
+# --- HDF5 Save ---
 data = {
     "time": np.linspace(0, 10, 1000),
     "signal": np.sin(np.linspace(0, 10, 1000)),
@@ -225,13 +262,17 @@ metadata = {"sensor": "A", "gain": 2.0, "notes": "baseline run"}
 
 save_data(data, "experiment_001", metadata=metadata)
 # Saves to: data/experiment_001.h5
-# Metadata + automatic timestamp are stored as HDF5 attributes.
 
 # Save into a subdirectory
-save_data(data, "baseline", subfolder="sims/run_001", metadata=metadata)
+save_data(data, "baseline", subdir="sims/run_001", metadata=metadata)
 # Saves to: data/sims/run_001/baseline.h5
 
-# --- Load ---
+# --- NumPy NPZ ---
+save_npz(data, "experiment_001", metadata=metadata)
+# Saves to: data/experiment_001.npz
+npz_result = load_npz("experiment_001")
+
+# --- HDF5 Load ---
 result = load_data("experiment_001")
 result["time"]        # numpy array
 result["signal"]      # numpy array
@@ -267,13 +308,14 @@ params = {"N": 10_000, "beta": 0.44, "seed": 42}
 
 # First call: runs simulation, saves result automatically
 data, filepath = produce_or_load(run_simulation, params)
-print(f"Loaded from: {filepath}")
+print(f"Saved to: {filepath}")
 
 # Second call: loads from disk — simulation is NOT re-run
 data, filepath = produce_or_load(run_simulation, params)
+print(f"Loaded from: {filepath}")   # same path
 
 # Use a custom subfolder
-data, filepath = produce_or_load(run_simulation, params, subfolder="sims/ising")
+data, filepath = produce_or_load(run_simulation, params, subdir="sims/ising")
 
 # The file path will be something like:
 #   data/sims/ising/N=10000_beta=0.44_seed=42.h5
@@ -301,24 +343,66 @@ tagsave(data, "final_result", metadata={"run_id": "exp_42"})
 # }
 ```
 
+### Atomic and Temporary Saves
+
+`safesave` writes atomically: it creates a `.tmp.h5` sibling first, then
+renames it into place. Your data is never half-written on disk.
+
+```python
+from my_analysis import safesave, tmpsave
+
+# Atomic save — safe on crash/power failure
+safesave("run_001", data, metadata={"run": 1}, subdir="sims")
+
+# Temporary file — deleted automatically when the block exits
+with tmpsave(data) as tmp_path:
+    process_file(tmp_path)   # file exists only inside this block
+```
+
+---
+
 ### Collecting Results
 
-`collect_results` loads all HDF5 files from a directory into a single
-pandas DataFrame — one row per file.
+`collect_results` loads all HDF5 files from a directory into a list of dicts
+or a pandas DataFrame — one row per file.
 
 ```python
 from my_analysis import collect_results
 
-# Aggregate every .h5 file in data/sims/
-df = collect_results(subfolder="sims")
+# List of dicts (default)
+rows = collect_results(subdir="sims")
+
+# pandas DataFrame (one row per file, metadata columns prefixed _meta_)
+df = collect_results(subdir="sims", as_dataframe=True)
 print(df.head())
-#     N  beta  seed  energy_mean  ...
-# 0  1000  0.3  42   -0.152  ...
-# 1  1000  0.4  42   -0.438  ...
-# ...
+#     N  beta  seed  energy_mean  ...  _filepath
+# 0  1000  0.3  42   -0.152  ...  data/sims/...
 
 # Filter by parameter values
 high_beta = df[df["beta"] > 0.4]
+```
+
+---
+
+### Reproducibility Helpers
+
+```python
+from my_analysis import snapshot_environment, set_random_seed
+
+# Capture full environment (Python version + all installed packages)
+env = snapshot_environment()
+# -> {"python_version": "3.12.9", "platform": "...", "packages": [...], "captured_at": "..."}
+
+# Set seeds for numpy, random, and torch (if available) — returns metadata dict
+seed_meta = set_random_seed(42)
+# -> {"random_seed": 42}
+
+# Embed both in your saved data
+save_data(
+    data,
+    "reproducible_run",
+    metadata={**seed_meta, "environment": env},
+)
 ```
 
 ---
@@ -359,7 +443,7 @@ from my_analysis import produce_or_load, collect_results
 def compute_statistics(params: dict) -> dict:
     """Load raw data and compute summary statistics."""
     from my_analysis import load_data, savename
-    raw = load_data(savename(params), subfolder="sims/ising")
+    raw = load_data(savename(params), subdir="sims/ising")
     energy = raw["energy"]
     return {
         "mean_energy": np.array([energy.mean()]),
@@ -369,8 +453,8 @@ def compute_statistics(params: dict) -> dict:
     }
 
 params = {"N": 1000, "beta": 0.44, "seed": 0}
-results, path = produce_or_load(compute_statistics, params, subfolder="sims/stats")
-print(results)
+results, path = produce_or_load(compute_statistics, params, subdir="sims/stats")
+print(f"Saved to {path}")
 ```
 
 ### 3 — Collect and plot
@@ -380,7 +464,7 @@ print(results)
 import matplotlib.pyplot as plt
 from my_analysis import collect_results, plotfile
 
-df = collect_results(subfolder="sims/stats")
+df = collect_results(subdir="sims/stats", as_dataframe=True)
 df = df.sort_values("beta")
 
 fig, ax = plt.subplots()
@@ -404,7 +488,10 @@ Options:
   --help     Show this message and exit.
 
 Commands:
-  init  Create a new Python project with modern tooling and best practices.
+  init     Create a new Python project with modern tooling and best practices.
+  status   Show an overview of the current PyWatson project.
+  sweep    Print filenames for a parameter sweep.
+  summary  Summarise HDF5 data files in the project data directory.
 ```
 
 ```
@@ -412,8 +499,8 @@ pywatson init [OPTIONS] PROJECT_NAME
 
 Options:
   -p, --path PATH                  Directory to create the project in.  [default: .]
-  --author-name TEXT               Author name.
-  --author-email TEXT              Author email.
+  --author-name TEXT               Author name.  [default: git config user.name]
+  --author-email TEXT              Author email.  [default: git config user.email]
   --description TEXT               Short project description.
   -t, --project-type [default|minimal|full]
                                    Project structure type.  [default: default]
@@ -425,6 +512,24 @@ Options:
   --env-file PATH                  environment.yml to import dependencies from.
   --force                          Overwrite existing directory.
   --help                           Show this message and exit.
+```
+
+```
+pywatson sweep [OPTIONS] KEY=VAL[,VAL...] ...
+
+Options:
+  --suffix TEXT     File suffix.  [default: .h5]
+  --connector TEXT  Connector between key=value pairs.  [default: _]
+  --help            Show this message and exit.
+```
+
+```
+pywatson summary [OPTIONS]
+
+Options:
+  --subdir TEXT  Subdirectory within data/ to summarise.
+  --recursive    Search recursively.  [default: True]
+  --help         Show this message and exit.
 ```
 
 ---

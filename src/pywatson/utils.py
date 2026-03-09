@@ -16,14 +16,34 @@ tagsave    — thin alias that **always** captures git state; equivalent to
              every saved file to be traceable to an exact commit.
 """
 
-import numpy as np
-import h5py
-from pathlib import Path
-from typing import Dict, Any, Optional, Union
+import itertools
 import json
+import os
+import platform
+import re as _re
 import subprocess
+import sys
+import tempfile
 import inspect
+from contextlib import contextmanager
 from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, Generator, Optional, Union
+
+import h5py
+import numpy as np
+
+try:
+    import pandas as pd  # type: ignore[import]
+    _HAS_PANDAS = True
+except ImportError:
+    _HAS_PANDAS = False
+
+try:
+    import zarr  # type: ignore[import]
+    _HAS_ZARR = True
+except ImportError:
+    _HAS_ZARR = False
 
 
 # Cache for project root to avoid repeated filesystem lookups
@@ -207,12 +227,10 @@ def savename(
         if access is not None:
             v = access(v)
 
-        # Format floats with specified precision
+        # Format floats with significant digits (not decimal places)
         if isinstance(v, float):
-            # Round to specified digits
-            v = round(v, digits)
-            # Remove trailing zeros and decimal point if integer
-            v_str = f"{v:.{digits}f}".rstrip("0").rstrip(".")
+            # g format: {digits} significant figures, strips trailing zeros automatically
+            v_str = f"{v:.{digits}g}"
         else:
             v_str = str(v)
 
@@ -296,6 +314,7 @@ def save_data(
     metadata: Optional[Dict[str, Any]] = None,
     compression: Optional[str] = "gzip",
     include_git: bool = False,
+    subdir: Optional[str] = None,
 ) -> Path:
     """
     Save data to HDF5 file in the data directory with metadata.
@@ -305,12 +324,16 @@ def save_data(
     Use :func:`tagsave` instead if you always want git tracking.
 
     Args:
-        data: Dictionary of data to save (keys become HDF5 groups/datasets)
+        data: Dictionary of data to save (keys become HDF5 groups/datasets).
+              Values may be numpy arrays, scalars, strings, lists, dicts, or
+              ``pandas.DataFrame`` objects (saved as column datasets).
         filename: Name of the file (without extension)
         metadata: Optional metadata dictionary
         compression: Compression method ('gzip', 'lzf', 'szip', or None)
         include_git: Whether to include git information in metadata
                      (default: False — opt-in)
+        subdir: Optional subdirectory within data/ to save the file in.
+                Created automatically if it does not exist.
 
     Returns:
         Path to the saved file
@@ -319,7 +342,10 @@ def save_data(
     if not filename.endswith(".h5"):
         filename = filename + ".h5"
 
-    filepath = datafile(filename)
+    if subdir:
+        filepath = datadir(subdir, create=True) / filename
+    else:
+        filepath = datafile(filename)
 
     with h5py.File(filepath, "w") as f:
         # Prepare metadata
@@ -348,25 +374,7 @@ def save_data(
 
         # Save data
         for key, value in data.items():
-            if isinstance(value, np.ndarray):
-                f.create_dataset(key, data=value, compression=compression)
-            elif isinstance(value, (int, float, bool)):
-                f.create_dataset(key, data=value)
-            elif isinstance(value, str):
-                # Handle string data properly for HDF5
-                f.create_dataset(key, data=value.encode("utf-8") if value else b"")
-            elif isinstance(value, (list, tuple)):
-                f.create_dataset(key, data=np.array(value), compression=compression)
-            elif isinstance(value, dict):
-                # Create group for nested dictionaries
-                group = f.create_group(key)
-                _save_dict_to_group(group, value, compression)
-            else:
-                # Try to convert to numpy array
-                try:
-                    f.create_dataset(key, data=np.array(value), compression=compression)
-                except Exception as e:
-                    print(f"Warning: Could not save {key}: {e}")
+            _save_value_to_hdf5(f, key, value, compression)
 
     return filepath
 
@@ -418,41 +426,71 @@ def load_data(filename: str, keys: Optional[list] = None) -> Dict[str, Any]:
     return data
 
 
+def _save_value_to_hdf5(
+    parent: Union[h5py.File, h5py.Group],
+    key: str,
+    value: Any,
+    compression: Optional[str] = "gzip",
+) -> None:
+    """Write a single value into an HDF5 file or group."""
+    if _HAS_PANDAS and isinstance(value, pd.DataFrame):
+        grp = parent.create_group(key)
+        grp.attrs["_pywatson_type"] = "dataframe"
+        grp.attrs["_df_columns"] = json.dumps(list(value.columns))
+        for col in value.columns:
+            col_data = value[col].to_numpy()
+            if col_data.dtype.kind in ("U", "O", "S"):
+                encoded = np.array([str(x).encode("utf-8") for x in col_data])
+                grp.create_dataset(str(col), data=encoded)
+            else:
+                grp.create_dataset(str(col), data=col_data, compression=compression)
+    elif isinstance(value, np.ndarray):
+        parent.create_dataset(key, data=value, compression=compression)
+    elif isinstance(value, (int, float, bool)):
+        parent.create_dataset(key, data=value)
+    elif isinstance(value, str):
+        parent.create_dataset(key, data=value.encode("utf-8") if value else b"")
+    elif isinstance(value, (list, tuple)):
+        parent.create_dataset(key, data=np.array(value), compression=compression)
+    elif isinstance(value, dict):
+        group = parent.create_group(key)
+        _save_dict_to_group(group, value, compression)
+    else:
+        try:
+            parent.create_dataset(key, data=np.array(value), compression=compression)
+        except Exception as e:
+            print(f"Warning: Could not save {key}: {e}")
+
+
 def _save_dict_to_group(
     group: h5py.Group, data: Dict[str, Any], compression: Optional[str] = "gzip"
-):
+) -> None:
     """Recursively save dictionary to HDF5 group."""
     for key, value in data.items():
-        if isinstance(value, np.ndarray):
-            group.create_dataset(key, data=value, compression=compression)
-        elif isinstance(value, (int, float, bool)):
-            group.create_dataset(key, data=value)
-        elif isinstance(value, str):
-            group.create_dataset(key, data=value.encode("utf-8") if value else b"")
-        elif isinstance(value, (list, tuple)):
-            group.create_dataset(key, data=np.array(value), compression=compression)
-        elif isinstance(value, dict):
-            subgroup = group.create_group(key)
-            _save_dict_to_group(subgroup, value, compression)
-        else:
-            try:
-                group.create_dataset(key, data=np.array(value), compression=compression)
-            except Exception as e:
-                print(f"Warning: Could not save {key}: {e}")
+        _save_value_to_hdf5(group, key, value, compression)
 
 
-def _load_item_from_hdf5(item) -> Any:
-    """Load item from HDF5 file (dataset or group)."""
-    if isinstance(item, h5py.Dataset):
+def _load_item_from_hdf5(item: Union[h5py.Dataset, h5py.Group]) -> Any:
+    """Load item from HDF5 file (dataset or group), reconstructing DataFrames."""
+    if isinstance(item, h5py.Group):
+        if item.attrs.get("_pywatson_type") == "dataframe" and _HAS_PANDAS:
+            columns = json.loads(item.attrs["_df_columns"])
+            col_data = {}
+            for col in columns:
+                raw = item[str(col)][()]
+                if isinstance(raw, np.ndarray) and raw.dtype.kind == "S":
+                    col_data[col] = np.array([x.decode("utf-8") for x in raw])
+                else:
+                    col_data[col] = raw
+            return pd.DataFrame(col_data)
+        return {key: _load_item_from_hdf5(item[key]) for key in item.keys()}
+    elif isinstance(item, h5py.Dataset):
         data = item[()]
-        # Convert bytes to string if necessary
         if isinstance(data, bytes):
             return data.decode("utf-8")
         elif isinstance(data, np.ndarray) and data.dtype.kind == "S":
-            return data.astype(str)
+            return np.array([x.decode("utf-8") for x in data])
         return data
-    elif isinstance(item, h5py.Group):
-        return {key: _load_item_from_hdf5(item[key]) for key in item.keys()}
     else:
         return item
 
@@ -610,7 +648,13 @@ def tagsave(filename: str, data: Dict[str, Any], tags: Optional[Dict[str, Any]] 
     return save_data(all_data, filename, metadata=tags, include_git=True)
 
 
-def produce_or_load(filename: str, producing_function, *args, **kwargs):
+def produce_or_load(
+    filename: str,
+    producing_function,
+    *args,
+    subdir: Optional[str] = None,
+    **kwargs,
+) -> tuple[Dict[str, Any], Path]:
     """
     Load existing data or produce and save new data (DrWatson.jl-style smart cache).
 
@@ -623,63 +667,566 @@ def produce_or_load(filename: str, producing_function, *args, **kwargs):
         producing_function: Function that returns a ``dict`` if the file does
                             not yet exist
         *args: Positional arguments forwarded to ``producing_function``
+        subdir: Optional subdirectory within data/ (keyword-only)
         **kwargs: Keyword arguments forwarded to ``producing_function``
 
     Returns:
-        Tuple of ``(data_dict, existed)`` where ``existed`` is ``True`` when
-        the file was loaded from cache and ``False`` when it was just computed.
+        Tuple of ``(data_dict, filepath)`` where ``filepath`` is the
+        :class:`~pathlib.Path` of the cached file.
 
     Raises:
         TypeError: If ``producing_function`` does not return a ``dict``.
 
     Example:
-        >>> data, existed = produce_or_load("sim_alpha=0.01", run_simulation, alpha=0.01)
-        >>> print("cached" if existed else "computed")
+        >>> data, fp = produce_or_load("sim_alpha=0.01", run_simulation, alpha=0.01)
+        >>> print("loaded from", fp)
     """
     if not filename.endswith(".h5"):
         filename = filename + ".h5"
 
-    filepath = datafile(filename, create_dir=False)
+    if subdir:
+        filepath = datadir(subdir, create=True) / filename
+    else:
+        filepath = datafile(filename, create_dir=False)
 
     if filepath.exists():
-        return load_data(filename), True
+        return load_data(filepath.name) if not subdir else _load_data_from_path(filepath), filepath
 
     data = producing_function(*args, **kwargs)
 
     if not isinstance(data, dict):
         raise TypeError("producing_function must return a dictionary")
 
-    tagsave(filename, data)
-    return data, False
+    save_data(data, filename[:-3], include_git=True, subdir=subdir)
+    return data, filepath
 
 
-def collect_results(folder_path: Optional[str] = None) -> list[Dict[str, Any]]:
+def _load_data_from_path(filepath: Path) -> Dict[str, Any]:
+    """Load HDF5 data from an absolute path (internal helper)."""
+    data: Dict[str, Any] = {}
+    with h5py.File(filepath, "r") as f:
+        if "metadata" in f.attrs:
+            try:
+                data["_metadata"] = json.loads(str(f.attrs["metadata"]))
+            except json.JSONDecodeError:
+                data["_metadata"] = {"note": "Could not parse metadata"}
+        for key in f.keys():
+            data[key] = _load_item_from_hdf5(f[key])
+    return data
+
+
+def collect_results(
+    folder_path: Optional[str] = None,
+    subdir: Optional[str] = None,
+    recursive: bool = True,
+    as_dataframe: bool = False,
+) -> "list[Dict[str, Any]] | pd.DataFrame":
     """
     Collect all results from .h5 files in a folder.
 
     Args:
-        folder_path: Path to the folder (defaults to data directory)
+        folder_path: Explicit path to the folder. Defaults to ``datadir()``.
+        subdir: Subdirectory *within* ``datadir()`` to search (mutually
+                exclusive with ``folder_path``).
+        recursive: Whether to search subdirectories recursively (default True).
+        as_dataframe: Return a ``pandas.DataFrame`` instead of a list of dicts.
+                      Scalar values and metadata fields become columns.
+                      Requires pandas to be installed.
 
     Returns:
-        List of dictionaries, each containing data from one file
+        List of data dicts, or a ``pandas.DataFrame`` when *as_dataframe*
+        is ``True``.
     """
-    if folder_path is None:
-        folder = datadir(create=False)
-    else:
+    if folder_path is not None:
         folder = Path(folder_path)
+    elif subdir is not None:
+        folder = datadir(subdir, create=False)
+    else:
+        folder = datadir(create=False)
 
     if not folder.exists():
-        return []
+        return (pd.DataFrame() if as_dataframe and _HAS_PANDAS else [])
 
-    results = []
+    pattern = "**/*.h5" if recursive else "*.h5"
+    results: list[Dict[str, Any]] = []
 
-    for filepath in folder.glob("**/*.h5"):
+    for filepath in sorted(folder.glob(pattern)):
         try:
-            data = load_data(filepath.name)
-            # Add the file path
+            data = _load_data_from_path(filepath)
             data["_filepath"] = str(filepath)
             results.append(data)
         except Exception as e:
-            print(f"Error loading {filepath}: {e}")
+            print(f"Warning: could not load {filepath}: {e}")
+
+    if as_dataframe:
+        if not _HAS_PANDAS:
+            raise ImportError(
+                "pandas is required for as_dataframe=True. "
+                "Install with: uv add pandas  or  pip install pandas"
+            )
+        # Flatten scalar metadata fields into top-level columns
+        flat_rows = []
+        for row in results:
+            flat: Dict[str, Any] = {}
+            for k, v in row.items():
+                if k == "_metadata" and isinstance(v, dict):
+                    for mk, mv in v.items():
+                        flat[f"_meta_{mk}"] = mv
+                elif not isinstance(v, (np.ndarray, dict, list)):
+                    flat[k] = v
+            flat_rows.append(flat)
+        return pd.DataFrame(flat_rows)
 
     return results
+
+
+# ---------------------------------------------------------------------------
+# DrWatson primitives: parse_savename, dict_list
+# ---------------------------------------------------------------------------
+
+
+def parse_savename(filename: str) -> Dict[str, Any]:
+    """
+    Parse a filename produced by :func:`savename` back into a parameter dict.
+
+    Performs best-effort type coercion: integer strings become ``int``,
+    numeric strings become ``float``, everything else stays ``str``.
+    Keys not in ``key=value`` form (e.g. a bare project name prefix) are
+    silently ignored.
+
+    Args:
+        filename: Filename or path string, e.g. ``"alpha=0.5_N=100_method=euler.h5"``.
+
+    Returns:
+        Dictionary of parameter key→value pairs.
+
+    Example:
+        >>> parse_savename("alpha=0.5_N=100_method=euler.h5")
+        {'N': 100, 'alpha': 0.5, 'method': 'euler'}
+    """
+    # Strip directory component, then strip only *known* file extensions from the right.
+    # Using Path.stem in a loop would drop value-dots (e.g. alpha=0.5 → alpha=0).
+    _KNOWN_EXTS = {".h5", ".npz", ".zarr", ".nc", ".csv", ".json", ".pkl", ".tmp", ".npy"}
+    stem = Path(filename).name
+    changed = True
+    while changed:
+        changed = False
+        for ext in _KNOWN_EXTS:
+            if stem.endswith(ext):
+                stem = stem[: -len(ext)]
+                changed = True
+                break
+
+    result: Dict[str, Any] = {}
+    for part in stem.split("_"):
+        if "=" not in part:
+            continue
+        key, _, raw = part.partition("=")
+        if not key:
+            continue
+        # Type coercion: int → float → str
+        try:
+            result[key] = int(raw)
+        except ValueError:
+            try:
+                result[key] = float(raw)
+            except ValueError:
+                result[key] = raw
+    return result
+
+
+def dict_list(*dicts: dict) -> list[Dict[str, Any]]:
+    """
+    Expand parameter dictionaries into every combination (Cartesian product).
+
+    List-valued entries are expanded; scalar entries are broadcast.  Accepts
+    multiple dicts that are first merged left-to-right.
+
+    Args:
+        *dicts: One or more parameter dictionaries.  Later dicts override
+                earlier keys.  List values are expanded; scalars are
+                treated as single-element lists.
+
+    Returns:
+        List of flat parameter dicts, one per combination.
+
+    Example:
+        >>> dict_list({"alpha": [0.1, 0.5], "N": [100, 1000]})
+        [{'alpha': 0.1, 'N': 100}, {'alpha': 0.1, 'N': 1000},
+         {'alpha': 0.5, 'N': 100}, {'alpha': 0.5, 'N': 1000}]
+        >>> dict_list({"model": "euler"}, {"dt": [0.01, 0.001], "T": 10})
+        [{'model': 'euler', 'dt': 0.01, 'T': 10},
+         {'model': 'euler', 'dt': 0.001, 'T': 10}]
+    """
+    combined: Dict[str, Any] = {}
+    for d in dicts:
+        combined.update(d)
+
+    keys = list(combined.keys())
+    values = [v if isinstance(v, (list, tuple)) else [v] for v in combined.values()]
+    return [dict(zip(keys, combo)) for combo in itertools.product(*values)]
+
+
+# ---------------------------------------------------------------------------
+# Reproducibility helpers
+# ---------------------------------------------------------------------------
+
+
+def safesave(
+    filename: str,
+    data: Dict[str, Any],
+    metadata: Optional[Dict[str, Any]] = None,
+    compression: Optional[str] = "gzip",
+    include_git: bool = False,
+    subdir: Optional[str] = None,
+) -> Path:
+    """
+    Atomically save data to an HDF5 file, preventing partial-write corruption.
+
+    Writes to a temporary file in the same directory, then renames it to the
+    final destination.  If the write fails the original file (if any) is
+    untouched.
+
+    Args:
+        filename: Target filename (without extension).
+        data: Data dictionary (same contract as :func:`save_data`).
+        metadata: Optional metadata dictionary.
+        compression: HDF5 compression algorithm.
+        include_git: Embed git state in metadata.
+        subdir: Subdirectory within ``data/``.
+
+    Returns:
+        Path to the saved file.
+    """
+    if not filename.endswith(".h5"):
+        filename = filename + ".h5"
+
+    if subdir:
+        target_dir = datadir(subdir, create=True)
+    else:
+        target_dir = datadir(create=True)
+
+    final_path = target_dir / filename
+
+    # Write to a sibling temp file, then atomically rename to final_path.
+    tmp_fd, tmp_path_str = tempfile.mkstemp(dir=target_dir, suffix=".tmp.h5")
+    tmp_path = Path(tmp_path_str)
+    try:
+        os.close(tmp_fd)
+        # Build metadata the same way save_data does
+        meta = dict(metadata or {})
+        meta.setdefault("created_at", datetime.now().isoformat())
+        meta.setdefault("created_by", "PyWatson/safesave")
+        meta["script"] = _get_script_info()
+        if include_git:
+            git_info = {
+                "gitcommit": current_git_commit(),
+                "gitbranch": _run_git_command(["rev-parse", "--abbrev-ref", "HEAD"]),
+            }
+            meta.update({k: v for k, v in git_info.items() if v is not None})
+        with h5py.File(tmp_path, "w") as f:
+            f.attrs["metadata"] = json.dumps(meta)
+            for key, value in data.items():
+                _save_value_to_hdf5(f, key, value, compression)
+        # POSIX rename is atomic within the same filesystem
+        tmp_path.replace(final_path)
+    except Exception:
+        if tmp_path.exists():
+            tmp_path.unlink(missing_ok=True)
+        raise
+
+    return final_path
+
+
+@contextmanager
+def tmpsave(
+    data: Dict[str, Any],
+    suffix: str = ".h5",
+    compression: Optional[str] = "gzip",
+) -> Generator[Path, None, None]:
+    """
+    Context manager: save data to a temporary file, yield its path, then delete it.
+
+    Useful for testing or one-off intermediate results that should not persist.
+
+    Args:
+        data: Data dictionary.
+        suffix: File suffix (default ``".h5"``).
+        compression: HDF5 compression.
+
+    Yields:
+        :class:`~pathlib.Path` of the temporary HDF5 file.
+
+    Example:
+        >>> with tmpsave({"x": np.eye(3)}) as p:
+        ...     result = load_data(str(p))
+    """
+    tmp_fd, tmp_path_str = tempfile.mkstemp(suffix=suffix)
+    tmp_path = Path(tmp_path_str)
+    try:
+        os.close(tmp_fd)
+        tmp_path.unlink()  # h5py must create the file itself
+        with h5py.File(tmp_path, "w") as f:
+            f.attrs["metadata"] = json.dumps(
+                {"created_at": datetime.now().isoformat(), "created_by": "PyWatson/tmpsave"}
+            )
+            for key, value in data.items():
+                _save_value_to_hdf5(f, key, value, compression)
+        yield tmp_path
+    finally:
+        if tmp_path.exists():
+            tmp_path.unlink()
+
+
+def snapshot_environment() -> Dict[str, Any]:
+    """
+    Capture the current Python environment for reproducibility.
+
+    Returns a dictionary with Python version, platform, and installed packages
+    (as reported by ``pip list``).  Safe to embed in HDF5 metadata.
+
+    Returns:
+        Dictionary with keys ``python_version``, ``platform``, ``packages``.
+    """
+    packages: list[str] = []
+    try:
+        result = subprocess.run(
+            [sys.executable, "-m", "pip", "list", "--format=freeze"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if result.returncode == 0:
+            packages = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+    except (subprocess.SubprocessError, FileNotFoundError):
+        pass
+
+    return {
+        "python_version": platform.python_version(),
+        "platform": platform.platform(),
+        "packages": packages,
+        "captured_at": datetime.now().isoformat(),
+    }
+
+
+def set_random_seed(seed: int) -> Dict[str, int]:
+    """
+    Set random seeds for reproducibility and return a metadata-ready dict.
+
+    Sets seeds for Python's built-in :mod:`random` module and NumPy.  If
+    PyTorch is installed its seed is set too.
+
+    Args:
+        seed: Integer seed value.
+
+    Returns:
+        Dictionary ``{"random_seed": seed}`` suitable for passing as metadata.
+
+    Example:
+        >>> params = {"N": 100, **set_random_seed(42)}
+        >>> tagsave(savename(params), run_simulation(params), tags=params)
+    """
+    import random
+
+    random.seed(seed)
+    np.random.seed(seed)
+
+    try:
+        import torch  # type: ignore[import]
+        torch.manual_seed(seed)
+    except ImportError:
+        pass
+
+    return {"random_seed": seed}
+
+
+# ---------------------------------------------------------------------------
+# Variant formats: NumPy NPZ
+# ---------------------------------------------------------------------------
+
+
+def save_npz(
+    data: Dict[str, Any],
+    filename: str,
+    metadata: Optional[Dict[str, Any]] = None,
+    compressed: bool = True,
+    subdir: Optional[str] = None,
+) -> Path:
+    """
+    Save arrays to a NumPy ``.npz`` archive in the data directory.
+
+    Args:
+        data: Dictionary of arrays (values are passed to :func:`numpy.savez`).
+        filename: Filename without extension.
+        metadata: Metadata dict stored as a ``_metadata.json`` entry.
+        compressed: Use :func:`numpy.savez_compressed` when ``True``
+                    (default) else :func:`numpy.savez`.
+        subdir: Subdirectory within ``data/``.
+
+    Returns:
+        Path to the saved ``.npz`` file.
+    """
+    if filename.endswith(".npz"):
+        filename = filename[:-4]
+
+    if subdir:
+        filepath = datadir(subdir, create=True) / (filename + ".npz")
+    else:
+        filepath = datadir(create=True) / (filename + ".npz")
+
+    save_fn = np.savez_compressed if compressed else np.savez
+
+    arrays = {k: np.asarray(v) for k, v in data.items() if not k.startswith("_")}
+    if metadata is not None:
+        arrays["_metadata_json"] = np.array([json.dumps(metadata).encode("utf-8")])
+
+    save_fn(str(filepath)[:-4], **arrays)  # numpy appends .npz automatically
+    # numpy.savez appends .npz to the given path, so `filepath` already points there
+    return filepath
+
+
+def load_npz(
+    filename: str,
+    subdir: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Load a NumPy ``.npz`` archive from the data directory.
+
+    Args:
+        filename: Filename with or without ``.npz`` extension.
+        subdir: Subdirectory within ``data/``.
+
+    Returns:
+        Dictionary of arrays plus ``_metadata`` if present.
+    """
+    if not filename.endswith(".npz"):
+        filename = filename + ".npz"
+
+    if subdir:
+        filepath = datadir(subdir, create=False) / filename
+    else:
+        filepath = datadir(create=False) / filename
+
+    if not filepath.exists():
+        raise FileNotFoundError(f"NPZ file not found: {filepath}")
+
+    npz = np.load(str(filepath), allow_pickle=False)
+    result: Dict[str, Any] = {}
+    for key in npz.files:
+        if key == "_metadata_json":
+            try:
+                result["_metadata"] = json.loads(npz[key][0].decode("utf-8"))
+            except Exception:
+                pass
+        else:
+            result[key] = npz[key]
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Variant formats: Zarr
+# ---------------------------------------------------------------------------
+
+
+def save_zarr(
+    data: Dict[str, Any],
+    filename: str,
+    metadata: Optional[Dict[str, Any]] = None,
+    compression: str = "blosc",
+    subdir: Optional[str] = None,
+) -> Path:
+    """
+    Save arrays to a Zarr store in the data directory.
+
+    Requires the ``zarr`` package (``uv add zarr`` or ``pip install zarr``).
+
+    Args:
+        data: Dictionary of arrays.
+        filename: Directory name for the Zarr store (without extension).
+        metadata: Metadata dict stored in the Zarr store's ``.zattrs``.
+        compression: Zarr compressor name (``"blosc"``/``"gzip"``/``"zstd"``).
+        subdir: Subdirectory within ``data/``.
+
+    Returns:
+        Path to the Zarr store directory.
+    """
+    if not _HAS_ZARR:
+        raise ImportError(
+            "zarr is required for save_zarr/load_zarr. "
+            "Install with: uv add zarr  or  pip install zarr"
+        )
+
+    if filename.endswith(".zarr"):
+        filename = filename[:-5]
+
+    if subdir:
+        store_path = datadir(subdir, create=True) / (filename + ".zarr")
+    else:
+        store_path = datadir(create=True) / (filename + ".zarr")
+
+    import numcodecs  # type: ignore[import]
+
+    compressor = {"blosc": numcodecs.Blosc(), "gzip": numcodecs.GZip(), "zstd": numcodecs.Zstd()}.get(
+        compression, numcodecs.Blosc()
+    )
+
+    z = zarr.open(str(store_path), mode="w")
+    for key, value in data.items():
+        z.create_dataset(key, data=np.asarray(value), compressor=compressor, overwrite=True)
+
+    z.attrs["metadata"] = json.dumps(
+        {**(metadata or {}), "created_at": datetime.now().isoformat(), "created_by": "PyWatson"}
+    )
+    return store_path
+
+
+def load_zarr(
+    filename: str,
+    keys: Optional[list] = None,
+    subdir: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Load arrays from a Zarr store in the data directory.
+
+    Requires the ``zarr`` package.
+
+    Args:
+        filename: Directory name of the Zarr store (with or without ``.zarr``).
+        keys: Optional list of dataset keys to load. ``None`` loads all.
+        subdir: Subdirectory within ``data/``.
+
+    Returns:
+        Dictionary of arrays plus ``_metadata`` if present.
+    """
+    if not _HAS_ZARR:
+        raise ImportError(
+            "zarr is required for save_zarr/load_zarr. "
+            "Install with: uv add zarr  or  pip install zarr"
+        )
+
+    if not filename.endswith(".zarr"):
+        filename = filename + ".zarr"
+
+    if subdir:
+        store_path = datadir(subdir, create=False) / filename
+    else:
+        store_path = datadir(create=False) / filename
+
+    if not store_path.exists():
+        raise FileNotFoundError(f"Zarr store not found: {store_path}")
+
+    z = zarr.open(str(store_path), mode="r")
+    result: Dict[str, Any] = {}
+
+    if "metadata" in z.attrs:
+        try:
+            result["_metadata"] = json.loads(z.attrs["metadata"])
+        except (json.JSONDecodeError, KeyError):
+            pass
+
+    target_keys = keys if keys is not None else list(z.keys())
+    for key in target_keys:
+        if key in z:
+            result[key] = z[key][:]
+
+    return result

@@ -12,16 +12,27 @@ modern Python tooling.
 - **Modern Tooling** -- Uses [uv](https://docs.astral.sh/uv/) for fast
   dependency management and virtual environments
 - **HDF5 Data Management** -- Built-in support for saving/loading scientific
-  data with h5py, automatic git tracking, and metadata
+  data with h5py, pandas DataFrames, automatic git tracking, and metadata
+- **Multiple Data Formats** -- HDF5 (`.h5`), NumPy compressed (`.npz`), and
+  Zarr (`.zarr`) via unified `save_*/load_*` API
 - **Smart Caching** -- `produce_or_load()` skips expensive recomputation when
-  results already exist on disk
-- **Parameter-Based Naming** -- `savename()` generates consistent filenames
-  from parameter dictionaries
+  results already exist on disk; returns the cache filepath for traceability
+- **Parameter-Based Naming** -- `savename()` / `parse_savename()` generate and
+  parse consistent filenames from parameter dictionaries
+- **Sweep Generation** -- `dict_list()` expands parameter grids (Cartesian
+  product); `pywatson sweep` prints all resulting filenames
+- **Reproducibility Helpers** -- `safesave()` (atomic write), `tmpsave()`
+  (temp-file context manager), `snapshot_environment()`, `set_random_seed()`
+- **Collect Results** -- `collect_results()` aggregates all data files into a
+  single pandas DataFrame for analysis
 - **Path Management** -- Project-aware directory functions that work from
   anywhere in your project tree
-- **Git Integration** -- Automatic git commit info embedded in saved data
+- **Git Integration** -- Automatic git commit info embedded in saved data;
+  author name/email auto-filled from `git config` at project creation
 - **License Selection** -- Choose MIT, BSD-3-Clause, Apache-2.0, or ISC at
   project creation time
+- **Project Dashboard** -- `pywatson status` shows directories, data-file
+  counts, and git state at a glance
 - **Docker & Zenodo Reproducibility** -- `--docker` flag scaffolds a
   `Dockerfile`, `docker-compose.yml`, and a GitHub Actions publish workflow so
   readers can reproduce your results with a single `docker compose run reproduce`
@@ -77,6 +88,9 @@ pywatson-init my-analysis
 
 # Interactive mode via the bash helper
 ./create-project.sh -i
+
+# Author name and email are pre-filled from `git config user.name/email`
+pywatson init my-project
 
 # Full control — all flags
 pywatson init my-project \
@@ -142,22 +156,56 @@ my-project/
 
 ```
 pywatson [--version] [--help]
-pywatson init [OPTIONS] PROJECT_NAME
+pywatson COMMAND [OPTIONS] ...
 ```
 
 `pywatson-init PROJECT_NAME` is a backward-compatible alias for `pywatson init`.
 
+### `pywatson init` — scaffold a new project
+
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--path`, `-p` | `.` | Directory to create the project in |
-| `--author-name` | (prompted) | Author name |
-| `--author-email` | (prompted) | Author email |
+| `--author-name` | `git config user.name` | Author name (auto-filled from git) |
+| `--author-email` | `git config user.email` | Author email (auto-filled from git) |
 | `--description` | (prompted) | Short project description |
 | `--project-type`, `-t` | `default` | `default`, `minimal`, or `full` |
 | `--license` | `MIT` | `MIT`, `BSD-3-Clause`, `Apache-2.0`, or `ISC` |
 | `--env-file` | | Import dependencies from environment.yml |
 | `--docker` | | Scaffold Docker + Zenodo reproducibility files |
 | `--force` | | Overwrite existing directory |
+
+### `pywatson status` — project dashboard
+
+Shows project root, directory listing with file counts, HDF5/NPZ/Zarr data
+file totals, and git branch/commit/clean status:
+
+```bash
+pywatson status
+```
+
+### `pywatson sweep` — parameter-sweep filenames
+
+Prints all `savename()`-generated filenames for a Cartesian product of
+parameter values:
+
+```bash
+pywatson sweep alpha=0.1,0.5,1.0 N=100,1000 --suffix .h5
+# 6 combinations:
+#   N=100_alpha=0.1.h5
+#   N=100_alpha=0.5.h5
+#   ...
+```
+
+### `pywatson summary` — data file overview
+
+Lists all HDF5 files in `data/` with their dataset keys and creation
+timestamps:
+
+```bash
+pywatson summary
+pywatson summary --subdir sims   # limit to data/sims/
+```
 
 ## Docker & Zenodo Reproducibility
 
@@ -203,9 +251,11 @@ Generated projects include `pywatson_utils.py` which provides these utilities:
 
 ```python
 from my_project import (
-    datadir, plotsdir, savename,
-    save_data, load_data, load_selective,
-    tagsave, produce_or_load,
+    datadir, plotsdir, savename, parse_savename, dict_list,
+    save_data, load_data, load_selective, save_npz, load_npz,
+    tagsave, safesave, tmpsave,
+    produce_or_load, collect_results,
+    snapshot_environment, set_random_seed,
 )
 
 # Path management (always relative to project root)
@@ -215,18 +265,35 @@ plotsdir("figures")              # -> Path("<project>/plots/figures")
 # Parameter-based filenames
 params = {"alpha": 0.5, "N": 100, "method": "euler"}
 savename(params, "h5")           # -> "N=100_alpha=0.5_method=euler.h5"
+parse_savename("N=100_alpha=0.5_method=euler.h5")  # -> {"N": 100, "alpha": 0.5, "method": "euler"}
+
+# Expand parameter grids (Cartesian product)
+all_params = dict_list({"alpha": [0.1, 0.5, 1.0], "N": [100, 1000]})
+# -> 6 dicts: {"alpha": 0.1, "N": 100}, {"alpha": 0.1, "N": 1000}, ...
 
 # Save data with automatic metadata and git info
 import numpy as np
 data = {"temperature": np.random.randn(1000)}
 save_data(data, "experiment_001", metadata={"sensor": "A"})
+save_data(data, "run_001", subdir="sims")          # -> data/sims/run_001.h5
 
-# Load data
+# Atomic save (safe on power failure / crash)
+safesave("experiment_001", data, metadata={"sensor": "A"})
+
+# Temporary save (auto-deleted when context ends)
+with tmpsave(data) as tmp_path:
+    process(tmp_path)
+
+# NumPy .npz format
+save_npz(data, "run_001", subdir="sims")
+loaded = load_npz("run_001", subdir="sims")
+
+# Load HDF5 data
 result = load_data("experiment_001")
 result["temperature"]            # numpy array
 result["_metadata"]              # dict with git commit, timestamp, custom fields
 
-# Load only specific datasets
+# Load only specific datasets (efficient for large files)
 partial = load_selective("experiment_001", keys=["temperature"])
 
 # Smart caching -- run once, load thereafter
@@ -235,6 +302,15 @@ def expensive_simulation(params):
     return {"result": computed_data}
 
 data, filepath = produce_or_load(expensive_simulation, {"N": 1000, "dt": 0.01})
+# filepath is the Path to the cache file
+
+# Collect all results into a pandas DataFrame
+df = collect_results(subdir="sims", as_dataframe=True)
+print(df.head())
+
+# Reproducibility helpers
+env = snapshot_environment()     # {"python_version": ..., "packages": [...], ...}
+seed_meta = set_random_seed(42)  # sets numpy/random/torch seeds, returns {"random_seed": 42}
 ```
 
 ## Environment File Support
@@ -286,11 +362,24 @@ uv run ruff format src/ tests/
 |---------|-------------|----------|
 | Package manager | Pkg.jl | uv |
 | Project structure | Yes | Yes (3 types) |
-| Parameter-based naming | Yes | Yes |
-| Smart caching | Yes | Yes |
+| Parameter-based naming | `savename` | `savename` + `parse_savename` |
+| Reverse filename parsing | Yes | Yes (`parse_savename`) |
+| Parameter grid expansion | `dict_list` | `dict_list` |
+| Smart caching | `produce_or_load` | `produce_or_load` (returns filepath) |
+| Collect results | `collect_results` | `collect_results` (→ DataFrame) |
 | Git integration | Yes | Yes |
 | Path management | Yes | Yes |
 | HDF5 support | Yes | Yes |
+| NumPy NPZ support | -- | Yes (`save_npz`/`load_npz`) |
+| Zarr support | -- | Yes (`save_zarr`/`load_zarr`) |
+| pandas DataFrame in HDF5 | -- | Yes |
+| Atomic saves | -- | Yes (`safesave`) |
+| Temp-file context | -- | Yes (`tmpsave`) |
+| Environment snapshot | -- | Yes (`snapshot_environment`) |
+| Random seed management | -- | Yes (`set_random_seed`) |
+| Project dashboard CLI | -- | Yes (`pywatson status`) |
+| Sweep filename CLI | -- | Yes (`pywatson sweep`) |
+| Data summary CLI | -- | Yes (`pywatson summary`) |
 | License selection | -- | Yes |
 | CI generation | -- | Yes (full type) |
 | Docker reproducibility | -- | Yes (`--docker`) |

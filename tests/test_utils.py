@@ -20,27 +20,35 @@ from pywatson.utils import (
     data_info,
     datadir,
     datafile,
+    dict_list,
     docsdir,
     find_project_root,
     get_project_dir,
     list_data_files,
     load_array,
     load_data,
+    load_npz,
     load_selective,
     notebookfile,
     notebooksdir,
+    parse_savename,
     plotfile,
     plotsdir,
     produce_or_load,
     projectdir,
+    safesave,
     save_array,
     save_data,
+    save_npz,
     savename,
     scriptfile,
     scriptsdir,
+    set_random_seed,
+    snapshot_environment,
     srcdir,
     tagsave,
     testsdir,
+    tmpsave,
 )
 
 # ---------------------------------------------------------------------------
@@ -169,8 +177,9 @@ class TestProduceOrLoadScriptMetadata:
             """Make data."""
             return {"z": 3}
 
-        _, existed = produce_or_load("test_pol_script", _make_data)
-        assert not existed, "File should have been freshly produced"
+        _, filepath = produce_or_load("test_pol_script", _make_data)
+        assert isinstance(filepath, Path), "Second return value must be a Path"
+        assert filepath.exists(), "File should have been freshly produced"
 
         loaded = load_data("test_pol_script")
         script = loaded["_metadata"]["script"]
@@ -711,3 +720,499 @@ class TestCollectResults:
         save_data({"value": np.array([1, 2, 3])}, "with_data")
         results = collect_results()
         assert any("value" in r for r in results)
+
+
+# ---------------------------------------------------------------------------
+# parse_savename tests
+# ---------------------------------------------------------------------------
+
+
+class TestParseSavename:
+    """Tests for parse_savename() — inverse of savename()."""
+
+    def test_parses_float_and_int(self):
+        """Parses float and int values correctly."""
+        result = parse_savename("alpha=0.5_N=100.h5")
+        assert result == {"alpha": 0.5, "N": 100}
+
+    def test_parses_string_value(self):
+        """Non-numeric values stay as strings."""
+        result = parse_savename("method=euler_N=50.h5")
+        assert result["method"] == "euler"
+        assert result["N"] == 50
+
+    def test_roundtrip_with_savename(self):
+        """parse_savename(savename(d)) returns equivalent dict."""
+        params = {"alpha": 0.1, "N": 200, "method": "rk4"}
+        fname = savename(params, suffix=".h5")
+        recovered = parse_savename(fname)
+        assert recovered["N"] == 200
+        assert recovered["method"] == "rk4"
+        assert abs(recovered["alpha"] - 0.1) < 1e-9
+
+    def test_strips_directory_prefix(self):
+        """Directory prefix is stripped."""
+        result = parse_savename("/some/path/x=1_y=2.h5")
+        assert result == {"x": 1, "y": 2}
+
+    def test_strips_multiple_extensions(self):
+        """Multiple extensions like .tmp.h5 are stripped."""
+        result = parse_savename("a=1_b=2.tmp.h5")
+        assert result == {"a": 1, "b": 2}
+
+    def test_ignores_bare_tokens(self):
+        """Tokens without '=' are silently ignored."""
+        result = parse_savename("project_alpha=0.5.h5")
+        assert "alpha" in result
+        assert result["alpha"] == 0.5
+
+    def test_empty_filename_returns_empty_dict(self):
+        """Empty stem gives empty dict."""
+        result = parse_savename(".h5")
+        assert result == {}
+
+
+# ---------------------------------------------------------------------------
+# dict_list tests
+# ---------------------------------------------------------------------------
+
+
+class TestDictList:
+    """Tests for dict_list() parameter grid expansion."""
+
+    def test_single_dict_list_values(self):
+        """Expands list values into combinations."""
+        result = dict_list({"alpha": [0.1, 0.5], "N": [100, 1000]})
+        assert len(result) == 4
+        ks = [frozenset(d.items()) for d in result]
+        assert frozenset({("alpha", 0.1), ("N", 100)}) in ks
+        assert frozenset({("alpha", 0.5), ("N", 1000)}) in ks
+
+    def test_scalar_values_broadcast(self):
+        """Scalar values act as single-element lists."""
+        result = dict_list({"mode": "euler", "dt": [0.01, 0.001]})
+        assert len(result) == 2
+        assert all(r["mode"] == "euler" for r in result)
+
+    def test_multiple_dicts_merged(self):
+        """Multiple input dicts are merged before expanding."""
+        result = dict_list({"a": [1, 2]}, {"b": [10, 20]})
+        assert len(result) == 4
+
+    def test_later_dict_overrides_earlier(self):
+        """Later dict keys override earlier ones."""
+        result = dict_list({"a": [1, 2]}, {"a": [99]})
+        assert all(r["a"] == 99 for r in result)
+        assert len(result) == 1
+
+    def test_single_element_lists(self):
+        """Single-element lists give a single combination."""
+        result = dict_list({"x": [1], "y": [2]})
+        assert result == [{"x": 1, "y": 2}]
+
+    def test_empty_dict_returns_one_empty_dict(self):
+        """Empty dict expands to a list containing one empty dict."""
+        result = dict_list({})
+        assert result == [{}]
+
+
+# ---------------------------------------------------------------------------
+# savename float significant-digits tests
+# ---------------------------------------------------------------------------
+
+
+class TestSavenameFloatFormatting:
+    """Verify savename uses significant digits (g format) not decimal places."""
+
+    def test_significant_digits_small_number(self):
+        """Very small floats use significant digits, not zero decimal places."""
+        # 0.0001 with 3 sig figs should NOT become '0' (old .3f bug)
+        result = savename({"eps": 0.0001}, digits=3, suffix="")
+        assert result == "eps=0.0001"
+
+    def test_significant_digits_large_number(self):
+        """Large floats use g-format (may use scientific notation)."""
+        result = savename({"big": 1e8}, digits=3, suffix="")
+        # g format: '1e+08'
+        assert "big=" in result
+        assert "0" not in result.split("=")[1] or "e" in result.split("=")[1]
+
+    def test_trailing_zeros_stripped(self):
+        """Trailing zeros are removed by g format."""
+        result = savename({"x": 1.0}, suffix="")
+        assert result == "x=1"  # not 'x=1.000'
+
+    def test_two_sig_figs(self):
+        """digits=2 gives 2 significant figures."""
+        result = savename({"alpha": 0.6666666}, digits=2, suffix="")
+        assert result == "alpha=0.67"
+
+
+# ---------------------------------------------------------------------------
+# ProduceOrLoad return-type tests
+# ---------------------------------------------------------------------------
+
+
+class TestProduceOrLoad:
+    """Tests for produce_or_load() — caching, return type, subdir."""
+
+    @pytest.fixture()
+    def mock_project(self, tmp_path):
+        """Mock project with data dir."""
+        (tmp_path / "data").mkdir()
+        with (
+            patch("pywatson.utils._PROJECT_ROOT", tmp_path),
+            patch("pywatson.utils.find_project_root", return_value=tmp_path),
+        ):
+            yield tmp_path
+
+    def test_returns_data_and_path_on_first_call(self, mock_project):
+        """First call produces data and returns (data, Path)."""
+        def make():
+            return {"v": 42}
+
+        data, path = produce_or_load("pol_first", make)
+        assert data["v"] == 42
+        assert isinstance(path, Path)
+        assert path.exists()
+
+    def test_returns_cached_data_and_same_path_on_second_call(self, mock_project):
+        """Second call loads from cache and returns same path."""
+        def make():
+            return {"v": 99}
+
+        _, path1 = produce_or_load("pol_cache", make)
+        _, path2 = produce_or_load("pol_cache", make)
+        assert path1 == path2
+
+    def test_producing_function_not_called_on_cache_hit(self, mock_project):
+        """Producing function is only called once."""
+        call_count = [0]
+
+        def make():
+            call_count[0] += 1
+            return {"x": 1}
+
+        produce_or_load("pol_once", make)
+        produce_or_load("pol_once", make)
+        assert call_count[0] == 1
+
+    def test_raises_type_error_for_non_dict(self, mock_project):
+        """Raises TypeError if producing function doesn't return dict."""
+        with pytest.raises(TypeError):
+            produce_or_load("pol_bad", lambda: [1, 2, 3])
+
+
+# ---------------------------------------------------------------------------
+# save_data subdir tests
+# ---------------------------------------------------------------------------
+
+
+class TestSaveDataSubdir:
+    """Tests for save_data/load_data with subdir parameter."""
+
+    @pytest.fixture()
+    def mock_project(self, tmp_path):
+        """Mock project with data dir."""
+        (tmp_path / "data").mkdir()
+        with (
+            patch("pywatson.utils._PROJECT_ROOT", tmp_path),
+            patch("pywatson.utils.find_project_root", return_value=tmp_path),
+        ):
+            yield tmp_path
+
+    def test_saves_to_subdir(self, mock_project):
+        """File is saved inside data/subdir/."""
+        path = save_data({"x": 1}, "sim", subdir="sims")
+        assert path == mock_project / "data" / "sims" / "sim.h5"
+        assert path.exists()
+
+    def test_creates_subdir_automatically(self, mock_project):
+        """Subdirectory is created if it does not exist."""
+        save_data({"x": 2}, "run", subdir="new_subdir")
+        assert (mock_project / "data" / "new_subdir").is_dir()
+
+
+# ---------------------------------------------------------------------------
+# safesave tests
+# ---------------------------------------------------------------------------
+
+
+class TestSafesave:
+    """Tests for safesave() atomic write."""
+
+    @pytest.fixture()
+    def mock_project(self, tmp_path):
+        """Mock project."""
+        (tmp_path / "data").mkdir()
+        with (
+            patch("pywatson.utils._PROJECT_ROOT", tmp_path),
+            patch("pywatson.utils.find_project_root", return_value=tmp_path),
+        ):
+            yield tmp_path
+
+    def test_safesave_creates_file(self, mock_project):
+        """safesave writes an HDF5 file at the expected path."""
+        path = safesave("safe_out", {"x": np.array([1, 2, 3])})
+        assert path.exists()
+        assert path.suffix == ".h5"
+
+    def test_safesave_data_readable(self, mock_project):
+        """Data written by safesave round-trips via load_data."""
+        safesave("safe_rt", {"score": 7.7})
+        data = load_data("safe_rt")
+        assert abs(float(data["score"]) - 7.7) < 1e-6
+
+    def test_safesave_no_tmp_files_left(self, mock_project):
+        """No leftover .tmp.h5 files after a successful write."""
+        safesave("safe_clean", {"v": 1})
+        tmp_files = list((mock_project / "data").glob("*.tmp.h5"))
+        assert tmp_files == []
+
+
+# ---------------------------------------------------------------------------
+# tmpsave tests
+# ---------------------------------------------------------------------------
+
+
+class TestTmpsave:
+    """Tests for tmpsave() context manager."""
+
+    def test_file_exists_inside_context(self):
+        """Temporary file exists while inside the context."""
+        with tmpsave({"a": np.array([1, 2])}) as p:
+            assert p.exists()
+
+    def test_file_deleted_after_context(self):
+        """Temporary file is removed after the context exits."""
+        with tmpsave({"a": np.array([1, 2])}) as p:
+            path = p
+        assert not path.exists()
+
+    def test_data_readable_inside_context(self):
+        """HDF5 data saved by tmpsave is readable inside the context."""
+        import h5py
+        with tmpsave({"z": np.zeros((3, 3))}) as p:
+            with h5py.File(p, "r") as f:
+                assert "z" in f
+
+
+# ---------------------------------------------------------------------------
+# snapshot_environment tests
+# ---------------------------------------------------------------------------
+
+
+class TestSnapshotEnvironment:
+    """Tests for snapshot_environment()."""
+
+    def test_returns_dict(self):
+        """Returns a dictionary."""
+        result = snapshot_environment()
+        assert isinstance(result, dict)
+
+    def test_has_required_keys(self):
+        """Dictionary has required keys."""
+        result = snapshot_environment()
+        assert "python_version" in result
+        assert "platform" in result
+        assert "packages" in result
+        assert "captured_at" in result
+
+    def test_python_version_matches_runtime(self):
+        """Python version matches sys.version_info."""
+        import sys
+        result = snapshot_environment()
+        version = result["python_version"]
+        assert str(sys.version_info.major) in version
+        assert str(sys.version_info.minor) in version
+
+    def test_packages_is_list(self):
+        """Packages field is a list of strings."""
+        result = snapshot_environment()
+        assert isinstance(result["packages"], list)
+
+
+# ---------------------------------------------------------------------------
+# set_random_seed tests
+# ---------------------------------------------------------------------------
+
+
+class TestSetRandomSeed:
+    """Tests for set_random_seed()."""
+
+    def test_returns_dict_with_seed(self):
+        """Returns {"random_seed": seed}."""
+        result = set_random_seed(42)
+        assert result == {"random_seed": 42}
+
+    def test_numpy_reproducibility(self):
+        """Calling set_random_seed() twice gives the same numpy output."""
+        set_random_seed(123)
+        a = np.random.rand(5)
+        set_random_seed(123)
+        b = np.random.rand(5)
+        np.testing.assert_array_equal(a, b)
+
+    def test_different_seeds_give_different_output(self):
+        """Different seeds produce (almost certainly) different output."""
+        set_random_seed(1)
+        a = np.random.rand(10)
+        set_random_seed(2)
+        b = np.random.rand(10)
+        assert not np.array_equal(a, b)
+
+
+# ---------------------------------------------------------------------------
+# NPZ format tests
+# ---------------------------------------------------------------------------
+
+
+class TestNPZ:
+    """Tests for save_npz() and load_npz()."""
+
+    @pytest.fixture()
+    def mock_project(self, tmp_path):
+        """Mock project with data dir."""
+        (tmp_path / "data").mkdir()
+        with (
+            patch("pywatson.utils._PROJECT_ROOT", tmp_path),
+            patch("pywatson.utils.find_project_root", return_value=tmp_path),
+        ):
+            yield tmp_path
+
+    def test_saves_and_loads_array(self, mock_project):
+        """Array survives a round-trip through NPZ."""
+        arr = np.array([1.0, 2.0, 3.0])
+        save_npz({"arr": arr}, "npz_rt")
+        loaded = load_npz("npz_rt")
+        np.testing.assert_array_equal(loaded["arr"], arr)
+
+    def test_file_has_npz_extension(self, mock_project):
+        """Saved file has .npz extension."""
+        path = save_npz({"x": np.eye(3)}, "npz_ext")
+        assert path.suffix == ".npz"
+        assert path.exists()
+
+    def test_metadata_roundtrip(self, mock_project):
+        """Metadata dict survives round-trip via _metadata_json."""
+        meta = {"run": "exp1", "lr": 0.01}
+        save_npz({"y": np.zeros(5)}, "npz_meta", metadata=meta)
+        loaded = load_npz("npz_meta")
+        assert "_metadata" in loaded
+        assert loaded["_metadata"]["run"] == "exp1"
+
+    def test_load_nonexistent_raises_file_not_found(self, mock_project):
+        """load_npz raises FileNotFoundError for missing files."""
+        with pytest.raises(FileNotFoundError):
+            load_npz("definitely_missing")
+
+    def test_save_with_subdir(self, mock_project):
+        """Files can be saved in a subdirectory."""
+        path = save_npz({"z": np.ones(4)}, "npz_sub", subdir="arrays")
+        assert path.exists()
+        assert "arrays" in str(path)
+
+
+# ---------------------------------------------------------------------------
+# collect_results as_dataframe tests
+# ---------------------------------------------------------------------------
+
+
+class TestCollectResultsDataFrame:
+    """Tests for collect_results(as_dataframe=True)."""
+
+    @pytest.fixture()
+    def mock_project(self, tmp_path):
+        """Mock project."""
+        (tmp_path / "data").mkdir()
+        with (
+            patch("pywatson.utils._PROJECT_ROOT", tmp_path),
+            patch("pywatson.utils.find_project_root", return_value=tmp_path),
+        ):
+            yield tmp_path
+
+    def test_returns_dataframe(self, mock_project):
+        """Returns a pandas DataFrame when as_dataframe=True."""
+        pd = pytest.importorskip("pandas")
+        save_data({"score": 1.0}, "df_a", metadata={"run": "a"})
+        save_data({"score": 2.0}, "df_b", metadata={"run": "b"})
+        df = collect_results(as_dataframe=True)
+        assert isinstance(df, pd.DataFrame)
+        assert len(df) == 2
+
+    def test_dataframe_has_filepath_column(self, mock_project):
+        """DataFrame includes _filepath column."""
+        pd = pytest.importorskip("pandas")
+        save_data({"x": 1.0}, "df_fp")
+        df = collect_results(as_dataframe=True)
+        assert "_filepath" in df.columns
+
+
+# ---------------------------------------------------------------------------
+# Zarr tests
+# ---------------------------------------------------------------------------
+
+
+class TestZarr:
+    """Tests for save_zarr() and load_zarr()."""
+
+    @pytest.fixture()
+    def mock_project(self, tmp_path):
+        """Set up a mock project root with a data/ directory."""
+        (tmp_path / "data").mkdir()
+        with (
+            patch("pywatson.utils._PROJECT_ROOT", tmp_path),
+            patch("pywatson.utils.find_project_root", return_value=tmp_path),
+        ):
+            yield tmp_path
+
+    def test_save_creates_store(self, mock_project):
+        """save_zarr creates a .zarr directory."""
+        from pywatson.utils import save_zarr
+
+        path = save_zarr({"values": np.arange(10)}, "test_store")
+        assert path.exists()
+        assert path.suffix == ".zarr"
+
+    def test_roundtrip(self, mock_project):
+        """Saved arrays can be loaded back exactly."""
+        from pywatson.utils import load_zarr, save_zarr
+
+        arr = np.linspace(0, 1, 50)
+        save_zarr({"signal": arr}, "zarr_rt")
+        loaded = load_zarr("zarr_rt")
+        np.testing.assert_array_almost_equal(loaded["signal"], arr)
+
+    def test_metadata_roundtrip(self, mock_project):
+        """Metadata is preserved through save/load."""
+        from pywatson.utils import load_zarr, save_zarr
+
+        meta = {"run": "exp42", "temperature": 300}
+        save_zarr({"x": np.zeros(5)}, "zarr_meta", metadata=meta)
+        loaded = load_zarr("zarr_meta")
+        assert "_metadata" in loaded
+        assert loaded["_metadata"]["run"] == "exp42"
+
+    def test_selective_key_loading(self, mock_project):
+        """Only requested keys are returned when keys= is given."""
+        from pywatson.utils import load_zarr, save_zarr
+
+        save_zarr({"a": np.ones(3), "b": np.zeros(3)}, "zarr_keys")
+        loaded = load_zarr("zarr_keys", keys=["a"])
+        assert "a" in loaded
+        assert "b" not in loaded
+
+    def test_save_with_subdir(self, mock_project):
+        """Store can be placed in a subdirectory."""
+        from pywatson.utils import save_zarr
+
+        path = save_zarr({"z": np.eye(2)}, "zarr_sub", subdir="arrays")
+        assert path.exists()
+        assert "arrays" in str(path)
+
+    def test_load_nonexistent_raises(self, mock_project):
+        """load_zarr raises FileNotFoundError for absent stores."""
+        from pywatson.utils import load_zarr
+
+        with pytest.raises(FileNotFoundError):
+            load_zarr("no_such_store")

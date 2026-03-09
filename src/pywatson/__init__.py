@@ -32,6 +32,19 @@ from .utils import (
     tagsave,
     produce_or_load,
     collect_results,
+    # DrWatson primitives
+    parse_savename,
+    dict_list,
+    # Reproducibility
+    safesave,
+    tmpsave,
+    snapshot_environment,
+    set_random_seed,
+    # Variant formats
+    save_npz,
+    load_npz,
+    save_zarr,
+    load_zarr,
 )
 
 __version__ = "0.1.0"
@@ -63,6 +76,19 @@ __all__ = [
     "tagsave",
     "produce_or_load",
     "collect_results",
+    # DrWatson primitives
+    "parse_savename",
+    "dict_list",
+    # Reproducibility
+    "safesave",
+    "tmpsave",
+    "snapshot_environment",
+    "set_random_seed",
+    # Variant formats
+    "save_npz",
+    "load_npz",
+    "save_zarr",
+    "load_zarr",
 ]
 
 from .core import create_project, ProjectScaffolder
