@@ -3,6 +3,9 @@
 This guide walks you through everything you need to go from zero to a fully
 working reproducible scientific Python project in minutes.
 
+> **See also**: [UTILITIES.md](UTILITIES.md) for the full API reference and
+> [CLI.md](CLI.md) for the complete CLI reference.
+
 ---
 
 ## Table of Contents
@@ -305,20 +308,21 @@ def run_simulation(params: dict) -> dict:
     return {"energy": energy, "magnetisation": energy.mean()}
 
 params = {"N": 10_000, "beta": 0.44, "seed": 42}
+filename = savename(params)   # "N=10000_beta=0.44_seed=42.h5"
 
 # First call: runs simulation, saves result automatically
-data, filepath = produce_or_load(run_simulation, params)
+data, filepath = produce_or_load(filename, run_simulation, params)
 print(f"Saved to: {filepath}")
 
 # Second call: loads from disk — simulation is NOT re-run
-data, filepath = produce_or_load(run_simulation, params)
+data, filepath = produce_or_load(filename, run_simulation, params)
 print(f"Loaded from: {filepath}")   # same path
 
 # Use a custom subfolder
-data, filepath = produce_or_load(run_simulation, params, subdir="sims/ising")
+data, filepath = produce_or_load(filename, run_simulation, params,
+                                  subdir="sims/ising")
 
-# The file path will be something like:
-#   data/sims/ising/N=10000_beta=0.44_seed=42.h5
+# The file path will be: data/sims/ising/N=10000_beta=0.44_seed=42.h5
 ```
 
 ### Git-Tagged Saves with `tagsave`
@@ -331,15 +335,15 @@ you want to be able to trace back to a specific version of your code.
 from my_analysis import tagsave
 
 data = {"result": computed_array}
-tagsave(data, "final_result", metadata={"run_id": "exp_42"})
+tagsave("final_result", data, tags={"run_id": "exp_42"})
 
 # Metadata will include:
 # {
-#   "git_commit": "a3f9c1e",
-#   "git_branch": "main",
-#   "git_dirty": False,
+#   "gitcommit": "a3f9c1e",
+#   "gitbranch": "main",
+#   "gitpatch": False,
 #   "run_id": "exp_42",
-#   "timestamp": "2025-03-09T10:00:00"
+#   "created_at": "2025-03-09T10:00:00"
 # }
 ```
 
@@ -416,7 +420,7 @@ Below is an end-to-end example that strings everything together.
 ```python
 # scripts/generate_data.py
 import numpy as np
-from my_analysis import datadir, savename, tagsave
+from my_analysis import savename, save_data
 
 PARAMS = [
     {"N": 1000, "beta": 0.3, "seed": 0},
@@ -429,7 +433,7 @@ for p in PARAMS:
     energy = rng.normal(loc=-p["beta"], scale=1.0, size=p["N"])
     data = {"energy": energy}
     filename = savename(p)
-    tagsave(data, filename, subfolder="sims/ising", metadata=p)
+    save_data(data, filename, subdir="sims/ising", metadata=p, include_git=True)
     print(f"Saved {filename}")
 ```
 
@@ -443,7 +447,7 @@ from my_analysis import produce_or_load, collect_results
 def compute_statistics(params: dict) -> dict:
     """Load raw data and compute summary statistics."""
     from my_analysis import load_data, savename
-    raw = load_data(savename(params), subdir="sims/ising")
+    raw = load_data("sims/ising/" + savename(params))   # include subdir in path
     energy = raw["energy"]
     return {
         "mean_energy": np.array([energy.mean()]),
@@ -453,7 +457,9 @@ def compute_statistics(params: dict) -> dict:
     }
 
 params = {"N": 1000, "beta": 0.44, "seed": 0}
-results, path = produce_or_load(compute_statistics, params, subdir="sims/stats")
+filename = savename(params)
+results, path = produce_or_load(filename, compute_statistics, params,
+                                subdir="sims/stats")
 print(f"Saved to {path}")
 ```
 
