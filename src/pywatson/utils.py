@@ -34,14 +34,14 @@ import h5py
 import numpy as np
 
 try:
-    import pandas as pd  # type: ignore[import]
+    import pandas as pd
 
     _HAS_PANDAS = True
 except ImportError:
     _HAS_PANDAS = False
 
 try:
-    import zarr  # type: ignore[import]
+    import zarr
 
     _HAS_ZARR = True
 except ImportError:
@@ -620,7 +620,7 @@ def load_array(filename: str, array_name: str | None = None) -> np.ndarray:
         available = list(arrays.keys())
         raise KeyError(f"Array '{array_name}' not found. Available: {available}")
 
-    return arrays[array_name]
+    return np.asarray(arrays[array_name])
 
 
 def tagsave(filename: str, data: dict[str, Any], tags: dict[str, Any] | None = None) -> Path:
@@ -1050,7 +1050,7 @@ def set_random_seed(seed: int) -> dict[str, int]:
     np.random.seed(seed)
 
     try:
-        import torch  # type: ignore[import]
+        import torch
 
         torch.manual_seed(seed)
     except ImportError:
@@ -1099,7 +1099,7 @@ def save_npz(
     if metadata is not None:
         arrays["_metadata_json"] = np.array([json.dumps(metadata).encode("utf-8")])
 
-    save_fn(str(filepath)[:-4], **arrays)  # numpy appends .npz automatically
+    save_fn(str(filepath)[:-4], **arrays)  # type: ignore[arg-type]  # numpy appends .npz automatically
     # numpy.savez appends .npz to the given path, so `filepath` already points there
     return filepath
 
@@ -1183,7 +1183,7 @@ def save_zarr(
     else:
         store_path = datadir(create=True) / (filename + ".zarr")
 
-    import numcodecs  # type: ignore[import]
+    import numcodecs
 
     _compressors = {"blosc": numcodecs.Blosc(), "gzip": numcodecs.GZip(), "zstd": numcodecs.Zstd()}
     compressor = _compressors.get(compression, numcodecs.Blosc())

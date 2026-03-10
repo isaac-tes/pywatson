@@ -18,7 +18,7 @@ from datetime import datetime
 from pathlib import Path
 
 import click
-import yaml
+import yaml  # type: ignore[import-untyped]
 from jinja2 import Environment, PackageLoader, select_autoescape
 from rich.console import Console
 from rich.progress import track
@@ -1337,7 +1337,7 @@ def sweep_command(params: tuple, suffix: str, connector: str) -> None:
             return
         key, _, raw = token.partition("=")
         vals_raw = raw.split(",")
-        coerced = []
+        coerced: list[int | float | str] = []
         for v in vals_raw:
             try:
                 coerced.append(int(v))
