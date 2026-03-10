@@ -199,11 +199,14 @@ uv build                         # package
 | Package manager | Pkg.jl | uv |
 | Project templates | 1 | 3 (default, minimal, full) |
 | Adopt existing projects | — | ✅ |
-| Parameter naming | savename | savename + parse_savename |
-| Smart caching | produce_or_load | produce_or_load (+ returns Path) |
-| Data formats | HDF5 | HDF5 + NPZ + Zarr + pandas |
-| Atomic saves | — | safesave + tmpsave |
-| Collect results | collect_results | collect_results → DataFrame |
+| Parameter naming | `savename` | `savename` + `parse_savename` |
+| Parameter grid expansion | `dict_list` | `dict_list` |
+| Smart caching | `produce_or_load` → `(data, file)` | `produce_or_load` → `(data, Path)` |
+| Data formats | JLD2 (default), BSON, CSV via [FileIO.jl](https://github.com/JuliaIO/FileIO.jl) | HDF5 (h5py), NumPy NPZ, Zarr, CSV/pandas |
+| Git tagging | `tagsave` + `tag!` + git diff patch | `tagsave` |
+| Atomic / safe saves | `safesave` (backup numbering) | `safesave` + `tmpsave` (auto-cleanup) |
+| Collect results | `collect_results` → DataFrame | `collect_results` → pandas DataFrame |
+| CLI | — | ✅ (`init`, `adopt`, `status`, `sweep`, `summary`) |
 | Docker integration | — | ✅ |
 | Zenodo integration | — | ✅ |
 
