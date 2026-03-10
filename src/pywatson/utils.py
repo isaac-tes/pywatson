@@ -207,10 +207,12 @@ def savename(
         Formatted filename.
 
     Example:
-        >>> savename({"alpha": 0.5, "beta": 10}, suffix=".h5")
-        'alpha=0.5_beta=10.h5'
-        >>> savename({"alpha": 0.6666666, "beta": 10}, digits=2)
-        'alpha=0.67_beta=10.h5'
+        ```python
+        savename({"alpha": 0.5, "beta": 10}, suffix=".h5")
+        # 'alpha=0.5_beta=10.h5'
+        savename({"alpha": 0.6666666, "beta": 10}, digits=2)
+        # 'alpha=0.67_beta=10.h5'
+        ```
     """
     if not d:
         return suffix
@@ -508,8 +510,10 @@ def load_selective(filename: str, keys: list) -> dict[str, Any]:
         Dictionary containing the loaded data and metadata
 
     Example:
-        >>> data = load_selective('results.h5', ['dataset1', 'dataset3'])
-        >>> # Returns only dataset1 and dataset3, plus _metadata
+        ```python
+        data = load_selective('results.h5', ['dataset1', 'dataset3'])
+        # Returns only dataset1 and dataset3, plus _metadata
+        ```
     """
     return load_data(filename, keys=keys)
 
@@ -635,8 +639,10 @@ def tagsave(filename: str, data: dict[str, Any], tags: dict[str, Any] | None = N
         Path to the saved file
 
     Example:
-        >>> params = {"alpha": 0.01, "nx": 100}
-        >>> tagsave(savename(params), {"T": temperature_array}, tags=params)
+        ```python
+        params = {"alpha": 0.01, "nx": 100}
+        tagsave(savename(params), {"T": temperature_array}, tags=params)
+        ```
     """
     if tags is None:
         tags = {}
@@ -678,8 +684,10 @@ def produce_or_load(
         TypeError: If ``producing_function`` does not return a ``dict``.
 
     Example:
-        >>> data, fp = produce_or_load("sim_alpha=0.01", run_simulation, alpha=0.01)
-        >>> print("loaded from", fp)
+        ```python
+        data, fp = produce_or_load("sim_alpha=0.01", run_simulation, alpha=0.01)
+        print("loaded from", fp)
+        ```
     """
     if not filename.endswith(".h5"):
         filename = filename + ".h5"
@@ -801,8 +809,10 @@ def parse_savename(filename: str) -> dict[str, Any]:
         Dictionary of parameter key→value pairs.
 
     Example:
-        >>> parse_savename("alpha=0.5_N=100_method=euler.h5")
-        {'N': 100, 'alpha': 0.5, 'method': 'euler'}
+        ```python
+        parse_savename("alpha=0.5_N=100_method=euler.h5")
+        # {'N': 100, 'alpha': 0.5, 'method': 'euler'}
+        ```
     """
     # Strip directory component, then strip only *known* file extensions from the right.
     # Using Path.stem in a loop would drop value-dots (e.g. alpha=0.5 → alpha=0).
@@ -851,12 +861,14 @@ def dict_list(*dicts: dict) -> list[dict[str, Any]]:
         List of flat parameter dicts, one per combination.
 
     Example:
-        >>> dict_list({"alpha": [0.1, 0.5], "N": [100, 1000]})
-        [{'alpha': 0.1, 'N': 100}, {'alpha': 0.1, 'N': 1000},
-         {'alpha': 0.5, 'N': 100}, {'alpha': 0.5, 'N': 1000}]
-        >>> dict_list({"model": "euler"}, {"dt": [0.01, 0.001], "T": 10})
-        [{'model': 'euler', 'dt': 0.01, 'T': 10},
-         {'model': 'euler', 'dt': 0.001, 'T': 10}]
+        ```python
+        dict_list({"alpha": [0.1, 0.5], "N": [100, 1000]})
+        # [{'alpha': 0.1, 'N': 100}, {'alpha': 0.1, 'N': 1000},
+        #  {'alpha': 0.5, 'N': 100}, {'alpha': 0.5, 'N': 1000}]
+        dict_list({"model": "euler"}, {"dt": [0.01, 0.001], "T": 10})
+        # [{'model': 'euler', 'dt': 0.01, 'T': 10},
+        #  {'model': 'euler', 'dt': 0.001, 'T': 10}]
+        ```
     """
     combined: dict[str, Any] = {}
     for d in dicts:
@@ -958,8 +970,10 @@ def tmpsave(
         :class:`~pathlib.Path` of the temporary HDF5 file.
 
     Example:
-        >>> with tmpsave({"x": np.eye(3)}) as p:
-        ...     result = load_data(str(p))
+        ```python
+        with tmpsave({"x": np.eye(3)}) as p:
+            result = load_data(str(p))
+        ```
     """
     tmp_fd, tmp_path_str = tempfile.mkstemp(suffix=suffix)
     tmp_path = Path(tmp_path_str)
@@ -1023,8 +1037,10 @@ def set_random_seed(seed: int) -> dict[str, int]:
         Dictionary ``{"random_seed": seed}`` suitable for passing as metadata.
 
     Example:
-        >>> params = {"N": 100, **set_random_seed(42)}
-        >>> tagsave(savename(params), run_simulation(params), tags=params)
+        ```python
+        params = {"N": 100, **set_random_seed(42)}
+        tagsave(savename(params), run_simulation(params), tags=params)
+        ```
     """
     import random
 
