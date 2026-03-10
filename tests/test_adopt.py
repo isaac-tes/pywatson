@@ -297,10 +297,10 @@ class TestProjectScanner:
         assert "main.py" in script_names
         assert "plot_results.py" in script_names
 
-    def test_flat_project_readme_goes_to_docs(self, flat_project: Path) -> None:
+    def test_flat_project_readme_stays_at_root(self, flat_project: Path) -> None:
         classified = ProjectScanner(flat_project).scan()
-        doc_names = {f.name for f in classified["docs"]}
-        assert "README.md" in doc_names
+        config_names = {f.name for f in classified["config"]}
+        assert "README.md" in config_names
 
     def test_flat_project_requirements_is_config(self, flat_project: Path) -> None:
         classified = ProjectScanner(flat_project).scan()
@@ -380,10 +380,10 @@ class TestProjectScanner:
         config_names = {f.name for f in classified["config"]}
         assert "config.yaml" in config_names
 
-    def test_nested_readme_is_docs(self, nested_research_project: Path) -> None:
+    def test_nested_readme_stays_at_root(self, nested_research_project: Path) -> None:
         classified = ProjectScanner(nested_research_project).scan()
-        doc_names = {f.name for f in classified["docs"]}
-        assert "README.md" in doc_names
+        config_names = {f.name for f in classified["config"]}
+        assert "README.md" in config_names
 
     # ------------------------------------------------------------------
     # Ignore rules
@@ -689,12 +689,12 @@ class TestAdoptCommand:
         assert (dest / "data" / "exp1_output.csv").exists()
         assert (dest / "data" / "exp2_output.csv").exists()
 
-    def test_nested_readme_in_docs(
+    def test_nested_readme_at_root(
         self, runner: CliRunner, nested_research_project: Path, tmp_path: Path
     ) -> None:
         _adopt(runner, nested_research_project, tmp_path)
         dest = _dest(tmp_path, "research_code")
-        assert (dest / "docs" / "README.md").exists()
+        assert (dest / "README.md").exists()
 
     # ------------------------------------------------------------------
     # Boilerplate generation

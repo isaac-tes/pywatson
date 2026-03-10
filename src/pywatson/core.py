@@ -820,11 +820,11 @@ class ProjectScanner:
             "readme.md",
             "readme.rst",
             "readme.txt",
-            "changelog.md",
-            "contributing.md",
             "license",
             "licence",
         }:
+            return "config"
+        if name.lower() in {"changelog.md", "contributing.md"}:
             return "docs"
         if ext in self.DOC_EXTENSIONS:
             return "docs"
@@ -839,6 +839,8 @@ class ProjectScanner:
             "pyproject.toml",
             "MANIFEST.in",
             "tox.ini",
+            "uv.lock",
+            ".python-version",
         }:
             return "config"
         if ext == ".py":
