@@ -1,64 +1,89 @@
-# PyWatson
+# 🔬 PyWatson
 
 A Python scientific project management tool inspired by
 [DrWatson.jl](https://juliadynamics.github.io/DrWatson.jl/stable/).
-Scaffolds reproducible scientific computing projects with modern Python
-tooling and DrWatson.jl-style path management, HDF5 data handling, and smart
-caching.
+Scaffolds reproducible scientific projects with modern Python tooling
+([uv](https://docs.astral.sh/uv/) + pytest + ruff) and DrWatson-style
+path management, HDF5 data handling, and smart caching.
 
-## Features
+## ✨ Features
 
-- **Project scaffolding** — three types (default, minimal, full) with
-  DrWatson.jl-style directory layout; author info auto-filled from `git config`
-- **Modern tooling** — [uv](https://docs.astral.sh/uv/) for dependency
-  management; ruff for linting; pytest pre-configured
-- **Multiple data formats** — HDF5 (`.h5`), NumPy compressed (`.npz`), Zarr
-  (`.zarr`) via a unified `save_*/load_*` API
-- **Parameter-based naming** — `savename()` / `parse_savename()` generate and
-  parse reproducible filenames from parameter dicts
-- **Parameter grids** — `dict_list()` expands Cartesian products;
-  `pywatson sweep` previews filenames without writing code
-- **Smart caching** — `produce_or_load()` skips recomputation when results
-  already exist; returns the cache `Path`
-- **Atomic / temp saves** — `safesave()` (crash-safe rename) and `tmpsave()`
-  (auto-deleted context manager)
-- **Collect results** — `collect_results()` aggregates all data files into a
-  pandas DataFrame
-- **Reproducibility helpers** — `snapshot_environment()`, `set_random_seed()`
-- **Project dashboard** — `pywatson status` shows dirs, data counts, git state
-- **Docker & Zenodo** — `--docker` flag adds a self-contained reproducibility
-  bundle (see [docs/DOCKER_GUIDE.md](docs/DOCKER_GUIDE.md))
+- 📁 **Project scaffolding** — three types (default, minimal, full) with
+  DrWatson.jl directory layout; author info auto-filled from `git config`
+- 🔧 **Modern tooling** — [uv](https://docs.astral.sh/uv/) package manager,
+  ruff for linting, pytest pre-configured
+- 💾 **Multiple data formats** — HDF5, NumPy NPZ, Zarr via unified `save_*/load_*` API
+- 📝 **Parameter naming** — `savename()`/`parse_savename()` for reproducible
+  filenames from parameter dicts
+- 📊 **Parameter grids** — `dict_list()` → Cartesian products;
+  `pywatson sweep` previews without code
+- ⚡ **Smart caching** — `produce_or_load()` skips recomputation; returns Path
+- 🛡️ **Atomic saves** — `safesave()` (crash-safe) + `tmpsave()` (auto-cleanup)
+- 📈 **Result aggregation** — `collect_results()` → pandas DataFrame
+- 🎯 **Reproducibility** — `snapshot_environment()`, `set_random_seed()`
+- 📊 **Dashboard** — `pywatson status` shows dirs, data, git state
+- 📦 **Adopt existing** — `pywatson adopt` scans & reorganizes messy projects
+  (see [docs/ADOPT_GUIDE.md](docs/ADOPT_GUIDE.md))
+- 🐳 **Docker & Zenodo** — `--docker` adds reproducibility bundle
+  (see [docs/DOCKER_GUIDE.md](docs/DOCKER_GUIDE.md))
 
-## Quick Start
+## 🚀 Quick Start
+
+### Install
 
 ```bash
-# Install uv (if needed)
+# Install uv (one-time)
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Install pywatson as a global tool
+# Install pywatson
 uv tool install git+https://github.com/isaac-tes/pywatson.git
+```
 
-# Scaffold a new project (author info auto-filled from git config)
+### Create a project
+
+```bash
 pywatson init my-analysis \
-  --author-name "Jane Doe" \
-  --author-email "jane@university.edu" \
-  --description "Ising model Monte Carlo"
+  --author-name "Jane Doe" --author-email "jane@uni.edu" \
+  --description "My research"
 
 cd my-analysis
 uv sync        # install dependencies
-uv run pytest  # run the test suite
+uv run pytest  # run tests
 ```
 
-> **Developer / clone workflow**: `git clone … && uv sync` then use
-> `uv run pywatson` instead of `pywatson`.
+### Adopt an existing project
 
-## Project Types
+```bash
+pywatson adopt /path/to/messy-code \
+  --author-name "Jane" --author-email "jane@uni.edu"
+# Scans, classifies files, organizes into pywatson structure
+```
 
-| Type | Use case | Extras |
-|------|----------|--------|
-| `default` | Standard scientific project | `data/{sims,exp_raw,exp_pro}`, `_research/`, `notebooks/`, `plots/` |
-| `minimal` | Lightweight / tooling only | `src/`, `data/`, `scripts/`, `tests/`, `docs/` |
-| `full` | Publication-ready | Everything in `default` + `config/`, `Makefile`, CI workflow, `CONTRIBUTING.md`, `CHANGELOG.md` |
+See [docs/ADOPT_GUIDE.md](docs/ADOPT_GUIDE.md) for details.
+
+## 📚 uv Essentials
+
+For complete docs: [uv documentation](https://docs.astral.sh/uv/)
+
+| Command | Purpose |
+|---------|---------|
+| `uv sync` | Install all dependencies (create/update `.venv`) |
+| `uv run pytest` | Run tests in project environment |
+| `uv add PACKAGE` | Add a dependency |
+| `uv remove PACKAGE` | Remove a dependency |
+| `uv pip list` | List installed packages |
+| `uv tool install TOOL` | Install CLI tool globally |
+
+> **Developer workflow**: Clone repo → `uv sync` → `uv run pywatson` instead of `pywatson`
+
+
+## 📂 Project Types
+
+| Type | Best for | Includes |
+|------|----------|----------|
+| `default` | Standard research | data/{sims,exp_raw,exp_pro}, notebooks, _research |
+| `minimal` | Lightweight | src, data, scripts, tests, docs |
+| `full` | Publication-ready | everything + config, Makefile, CI, docs |
 
 ### Default project structure
 
@@ -117,33 +142,37 @@ df = collect_results(subdir="sims", as_dataframe=True)
 
 For the complete API, see [docs/UTILITIES.md](docs/UTILITIES.md).
 
-## CLI
-
-```
-pywatson init    PROJECT_NAME   # scaffold a new project
-pywatson status                 # project dashboard
-pywatson sweep   KEY=V1,V2 ...  # preview parameter-sweep filenames
-pywatson summary                # list HDF5 files + keys
-```
-
-Full reference: [docs/CLI.md](docs/CLI.md).
-
-## Documentation
-
-| Guide | Contents |
-|-------|----------|
-| [docs/QUICKSTART.md](docs/QUICKSTART.md) | End-to-end scientific workflow walkthrough |
-| [docs/UTILITIES.md](docs/UTILITIES.md) | Complete API reference |
-| [docs/CLI.md](docs/CLI.md) | Full CLI reference |
-| [docs/DOCKER_GUIDE.md](docs/DOCKER_GUIDE.md) | Docker reproducibility guide |
-| [docs/ZENODO.md](docs/ZENODO.md) | Zenodo deposit guide |
-
-## Development
+## 💻 CLI
 
 ```bash
-uv run pytest               # run all tests
-uv run ruff check src/ tests/
-uv run ruff format src/ tests/
+pywatson init PROJ_NAME          # create new project
+pywatson adopt /path/to/code     # adopt existing project
+pywatson status                  # dashboard (dirs, data, git)
+pywatson sweep K=V1,V2 ...      # preview parameter-sweep names
+pywatson summary                 # list HDF5 files + keys
+```
+
+Full reference: [docs/CLI.md](docs/CLI.md)
+
+## 📖 Documentation
+
+| Guide | What |
+|-------|------|
+| [QUICKSTART.md](docs/QUICKSTART.md) | End-to-end workflow |
+| [UTILITIES.md](docs/UTILITIES.md) | API reference |
+| [CLI.md](docs/CLI.md) | CLI commands |
+| [ADOPT_GUIDE.md](docs/ADOPT_GUIDE.md) | Adopting existing projects |
+| [DOCKER_GUIDE.md](docs/DOCKER_GUIDE.md) | Docker reproducibility |
+| [ZENODO.md](docs/ZENODO.md) | Zenodo deposit |
+
+## 🛠️ Development
+
+```bash
+uv sync                          # install + dev deps
+uv run pytest                    # run all tests
+uv run ruff check src/ tests/    # lint
+uv run ruff format src/ tests/   # format
+uv build                         # package
 ```
 
 ### Architecture
@@ -155,40 +184,29 @@ uv run ruff format src/ tests/
 | `src/pywatson/templates/` | Jinja2 templates for generated project files |
 | `tests/` | pytest suite (220+ tests) |
 
-## Comparison with DrWatson.jl
+## 🔄 vs DrWatson.jl
 
 | Feature | DrWatson.jl | PyWatson |
 |---------|-------------|----------|
+| Language | Julia | Python 3.12+ |
 | Package manager | Pkg.jl | uv |
-| Project structure | Yes | Yes (3 types) |
-| Parameter naming | `savename` | `savename` + `parse_savename` |
-| Parameter grids | `dict_list` | `dict_list` |
-| Smart caching | `produce_or_load` | `produce_or_load` (returns Path) |
-| Collect results | `collect_results` | `collect_results` (→ DataFrame) |
-| Git integration | Yes | Yes |
-| Path management | Yes | Yes |
-| HDF5 support | Yes | Yes |
-| NumPy NPZ | -- | Yes |
-| Zarr | -- | Yes |
-| pandas DataFrame in HDF5 | -- | Yes |
-| Atomic saves | -- | `safesave` |
-| Temp-file context | -- | `tmpsave` |
-| Environment snapshot | -- | `snapshot_environment` |
-| Random seed management | -- | `set_random_seed` |
-| Project dashboard CLI | -- | `pywatson status` |
-| Sweep preview CLI | -- | `pywatson sweep` |
-| Data summary CLI | -- | `pywatson summary` |
-| License selection | -- | Yes |
-| CI generation | -- | Yes (full type) |
-| Docker reproducibility | -- | Yes (`--docker`) |
-| Docker guide | -- | [docs/DOCKER_GUIDE.md](docs/DOCKER_GUIDE.md) |
-| Zenodo guide | -- | [docs/ZENODO.md](docs/ZENODO.md) |
+| Project templates | 1 | 3 (default, minimal, full) |
+| Adopt existing projects | — | ✅ |
+| Parameter naming | savename | savename + parse_savename |
+| Smart caching | produce_or_load | produce_or_load (+ returns Path) |
+| Data formats | HDF5 | HDF5 + NPZ + Zarr + pandas |
+| Atomic saves | — | safesave + tmpsave |
+| Collect results | collect_results | collect_results → DataFrame |
+| Docker integration | — | ✅ |
+| Zenodo integration | — | ✅ |
 
-## License
+## 📄 License
 
 MIT — see [LICENSE](LICENSE).
 
-## Acknowledgments
+## 🙏 Built with
 
-- Inspired by [DrWatson.jl](https://juliadynamics.github.io/DrWatson.jl/stable/)
-- Built with [uv](https://docs.astral.sh/uv/), [Click](https://click.palletsprojects.com/), and [Rich](https://rich.readthedocs.io/)
+- [DrWatson.jl](https://juliadynamics.github.io/DrWatson.jl/stable/) (inspiration)
+- [uv](https://docs.astral.sh/uv/) (package management)
+- [Click](https://click.palletsprojects.com/) (CLI)
+- [Rich](https://rich.readthedocs.io/) (terminal UI)

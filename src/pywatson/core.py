@@ -50,6 +50,46 @@ PROJECT_TYPES = {
     "full": "Full (everything + config/, Makefile, CI, CONTRIBUTING, CHANGELOG)",
 }
 
+# --------------------------------------------------------------------------
+# File classification constants (used by ProjectScanner and adopt command)
+# --------------------------------------------------------------------------
+
+CATEGORY_DESCRIPTIONS: dict[str, str] = {
+    "tests": "Test files",
+    "notebooks": "Jupyter notebooks",
+    "data": "Data files",
+    "scripts": "Analysis scripts",
+    "source": "Library source",
+    "docs": "Documentation",
+    "config": "Config files",
+    "images": "Images / figures",
+    "other": "Other files",
+}
+
+# Default target subdirectory (relative to new project root) for each category.
+# "{package_name}" is substituted at runtime.
+CATEGORY_DEFAULT_DIRS: dict[str, str] = {
+    "tests": "tests",
+    "notebooks": "notebooks",
+    "data": "data",
+    "scripts": "scripts",
+    "source": "src/{package_name}",
+    "docs": "docs",
+    "config": "",        # empty string → project root
+    "images": "plots",
+    "other": "_research",
+}
+
+# Files that pywatson regenerates from templates; skip copying from source.
+_REGENERATED_FILES: frozenset[str] = frozenset({
+    "pyproject.toml",
+    "setup.py",
+    "setup.cfg",
+    "MANIFEST.in",
+    "tox.ini",
+    "requirements.txt",
+})
+
 # Valid license choices and their template filenames
 LICENSE_TEMPLATES = {
     "MIT": "LICENSE_MIT.jinja2",
@@ -638,6 +678,193 @@ class ProjectScaffolder:
 
 
 # ==========================================================================
+# ProjectScanner — classify files in an unstructured project
+# ==========================================================================
+
+
+class ProjectScanner:
+    """Scan an existing unstructured Python project and classify its files.
+
+    Walks the source directory, ignores hidden/build artefacts, and assigns
+    every file to one of these categories: ``tests``, ``notebooks``,
+    ``data``, ``scripts``, ``source``, ``docs``, ``config``, ``images``,
+    ``other``.
+
+    Args:
+        source_path: Root of the existing project to scan.
+    """
+
+    DATA_EXTENSIONS: frozenset[str] = frozenset({
+        ".h5", ".hdf5", ".npz", ".npy", ".csv", ".json", ".pkl", ".pickle",
+        ".mat", ".nc", ".zarr", ".parquet", ".feather", ".xlsx", ".xls",
+    })
+    NOTEBOOK_EXTENSIONS: frozenset[str] = frozenset({".ipynb"})
+    DOC_EXTENSIONS: frozenset[str] = frozenset({".md", ".rst", ".tex", ".pdf"})
+    CONFIG_EXTENSIONS: frozenset[str] = frozenset({
+        ".yml", ".yaml", ".cfg", ".ini", ".toml", ".env",
+    })
+    IMAGE_EXTENSIONS: frozenset[str] = frozenset({
+        ".png", ".jpg", ".jpeg", ".svg", ".eps", ".gif",
+    })
+    IGNORE_DIRS: frozenset[str] = frozenset({
+        ".git", "__pycache__", ".venv", "venv", "env", ".env",
+        "node_modules", ".mypy_cache", ".ruff_cache", ".pytest_cache",
+        ".tox", ".nox", "dist", "build", "site-packages",
+    })
+    IGNORE_SUFFIXES: frozenset[str] = frozenset({".pyc", ".pyo", ".pyd"})
+
+    def __init__(self, source_path: Path) -> None:
+        self.source_path = Path(source_path).resolve()
+
+    def scan(self) -> dict[str, list[Path]]:
+        """Scan and classify all files in the source directory.
+
+        Returns:
+            Dictionary mapping category name → list of absolute Paths.
+            Categories: ``tests``, ``notebooks``, ``data``, ``scripts``,
+            ``source``, ``docs``, ``config``, ``images``, ``other``.
+        """
+        classified: dict[str, list[Path]] = {
+            "tests": [], "notebooks": [], "data": [], "scripts": [],
+            "source": [], "docs": [], "config": [], "images": [], "other": [],
+        }
+        for path in self._iter_files():
+            cat = self._classify(path)
+            classified.setdefault(cat, []).append(path)
+        return classified
+
+    def _iter_files(self):
+        """Yield all non-ignored files under source_path, sorted."""
+        for path in sorted(self.source_path.rglob("*")):
+            if not path.is_file():
+                continue
+            rel = path.relative_to(self.source_path)
+            # Skip if any parent directory is in the ignore set
+            if any(
+                part in self.IGNORE_DIRS or part.endswith(".egg-info")
+                for part in rel.parts[:-1]
+            ):
+                continue
+            if path.suffix in self.IGNORE_SUFFIXES:
+                continue
+            yield path
+
+    def _classify(self, path: Path) -> str:
+        """Classify a single file into a category string."""
+        ext = path.suffix.lower()
+        name = path.name
+
+        if ext in self.NOTEBOOK_EXTENSIONS:
+            return "notebooks"
+        if ext in self.DATA_EXTENSIONS:
+            return "data"
+        if ext in self.IMAGE_EXTENSIONS:
+            return "images"
+        if name.lower() in {
+            "readme.md", "readme.rst", "readme.txt",
+            "changelog.md", "contributing.md", "license", "licence",
+        }:
+            return "docs"
+        if ext in self.DOC_EXTENSIONS:
+            return "docs"
+        if name in {".gitignore", ".gitattributes", "Makefile", "makefile"}:
+            return "config"
+        if ext in self.CONFIG_EXTENSIONS:
+            return "config"
+        if name in {
+            "requirements.txt", "setup.py", "setup.cfg", "pyproject.toml",
+            "MANIFEST.in", "tox.ini",
+        }:
+            return "config"
+        if ext == ".py":
+            return self._classify_python_file(path)
+        if ext in {".sh", ".bash", ".bat", ".ps1"}:
+            return "scripts"
+        return "other"
+
+    def _classify_python_file(self, path: Path) -> str:
+        """Classify a ``.py`` file as ``tests``, ``scripts``, or ``source``.
+
+        Uses filename patterns first, then content heuristics.
+
+        Args:
+            path: Absolute path to the Python file.
+
+        Returns:
+            Category string: ``"tests"``, ``"scripts"``, or ``"source"``.
+        """
+        name = path.name
+        # Name-based test detection
+        if name.startswith("test_") or name.endswith("_test.py") or name == "conftest.py":
+            return "tests"
+
+        try:
+            content = path.read_text(encoding="utf-8", errors="ignore")
+        except (OSError, PermissionError):
+            return "source"
+
+        # Content-based test detection
+        _test_patterns = (
+            r"\bdef test_\w+",
+            r"\bclass Test\w+",
+            r"\bimport pytest\b",
+            r"\bimport unittest\b",
+            r"@pytest\.mark\.",
+        )
+        if any(re.search(p, content) for p in _test_patterns):
+            return "tests"
+
+        # Script indicators: executable entry point or CLI framework
+        _script_patterns = (
+            r"if\s+__name__\s*==\s*['\"]__main__['\"]",
+            r"\bimport click\b",
+            r"\bimport argparse\b",
+            r"\bimport optparse\b",
+        )
+        if any(re.search(p, content) for p in _script_patterns):
+            return "scripts"
+
+        # Source indicators: at least one top-level function or class definition
+        if re.search(r"^(?:def |class )", content, re.MULTILINE):
+            return "source"
+
+        return "scripts"
+
+    def print_summary(self, classified: dict[str, list[Path]]) -> None:
+        """Print a Rich table summarising the scan results.
+
+        Args:
+            classified: Output from :meth:`scan`.
+        """
+        from rich.table import Table
+
+        table = Table(
+            title="Scanned Files",
+            show_header=True,
+            header_style="bold magenta",
+        )
+        table.add_column("Category", style="cyan", width=16)
+        table.add_column("Files", justify="right", width=6)
+        table.add_column("Examples", style="dim")
+
+        total = 0
+        for cat in ("tests", "notebooks", "data", "scripts", "source",
+                    "docs", "config", "images", "other"):
+            files = classified.get(cat, [])
+            if not files:
+                continue
+            total += len(files)
+            sample = [f.relative_to(self.source_path) for f in files[:3]]
+            sample_str = ", ".join(str(s) for s in sample)
+            if len(files) > 3:
+                sample_str += f"  (+{len(files) - 3} more)"
+            table.add_row(CATEGORY_DESCRIPTIONS.get(cat, cat), str(len(files)), sample_str)
+
+        console.print(table)
+        console.print(f"[bold]{total} files found[/bold]")
+
+
+# ==========================================================================
 # Helper functions
 # ==========================================================================
 
@@ -1064,6 +1291,294 @@ def summary_command(subdir: Optional[str], recursive: bool) -> None:
             console.print(f"    created : {created}")
         if keys:
             console.print(f"    datasets: {', '.join(keys)}")
+
+
+# ==========================================================================
+# adopt command — import an existing unstructured project
+# ==========================================================================
+
+
+@cli.command("adopt")
+@click.argument("source_path", default=".", type=click.Path(exists=True, file_okay=False))
+@click.option(
+    "--project-name", "-n",
+    default=None,
+    help="Name for the new project (default: source directory name).",
+)
+@click.option(
+    "--output-path", "-o",
+    type=click.Path(),
+    default=None,
+    help="Parent directory for the new project (default: alongside source with _pywatson suffix).",
+)
+@click.option(
+    "--auto",
+    is_flag=True,
+    default=False,
+    help="Accept all classification defaults without interactive prompts.",
+)
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    default=False,
+    help="Show what would happen without writing any files.",
+)
+@click.option(
+    "--copy/--move",
+    "do_copy",
+    default=True,
+    help="Copy files (default) or move them from the source.",
+)
+@click.option(
+    "--no-uv",
+    is_flag=True,
+    default=False,
+    help="Skip 'uv init' (structure + files only, useful for offline/testing).",
+)
+@click.option(
+    "--author-name",
+    default=lambda: _git_config("user.name"),
+    help="Author name (defaults to git config user.name).",
+)
+@click.option(
+    "--author-email",
+    default=lambda: _git_config("user.email"),
+    help="Author email (defaults to git config user.email).",
+)
+@click.option("--description", default="", help="Short project description.")
+@click.option(
+    "--project-type", "-t",
+    type=click.Choice(list(PROJECT_TYPES.keys()), case_sensitive=False),
+    default="default",
+    show_default=True,
+    help="Target pywatson project type.",
+)
+@click.option(
+    "--license", "license_type",
+    type=click.Choice(list(LICENSE_TEMPLATES.keys()), case_sensitive=False),
+    default="MIT",
+    show_default=True,
+    help="License type.",
+)
+@click.option(
+    "--python-version",
+    default="3.12",
+    show_default=True,
+    help="Target Python version (e.g. 3.11, 3.12).",
+)
+def adopt_command(
+    source_path: str,
+    project_name: Optional[str],
+    output_path: Optional[str],
+    auto: bool,
+    dry_run: bool,
+    do_copy: bool,
+    no_uv: bool,
+    author_name: str,
+    author_email: str,
+    description: str,
+    project_type: str,
+    license_type: str,
+    python_version: str,
+) -> None:
+    """Adopt an existing unstructured project into a pywatson layout.
+
+    Scans SOURCE_PATH (default: current directory) for Python scripts, data
+    files, notebooks, tests, and configuration.  Each file group is shown with
+    its proposed destination and the user is prompted for confirmation.
+
+    Use --auto to accept all defaults without prompts (good for scripting).
+    Use --dry-run to preview the plan without writing anything.
+    Use --no-uv to skip 'uv init' (structure only, full offline operation).
+
+    \b
+    Examples:
+      pywatson adopt ./old_project --auto
+      pywatson adopt ./old_project --project-name my_sim --output-path ~/projects
+      pywatson adopt ./old_project --dry-run
+    """
+    import shutil
+
+    source = Path(source_path).resolve()
+    proj_name = project_name or source.name
+    package_name = proj_name.lower().replace("-", "_").replace(" ", "_")
+
+    # Compute destination root
+    if output_path:
+        dest_root = Path(output_path).resolve() / proj_name
+    elif project_name and project_name != source.name:
+        dest_root = source.parent / proj_name
+    else:
+        dest_root = source.parent / f"{proj_name}_pywatson"
+
+    # Guard: refuse to overwrite the source with itself
+    if dest_root.resolve() == source.resolve():
+        console.print(
+            "[bold red]Error:[/bold red] destination is the same as source. "
+            "Use --project-name or --output-path to set a different target.",
+        )
+        sys.exit(1)
+
+    console.print(f"\n[bold blue]PyWatson Adopt[/bold blue]")
+    console.print(f"  Source  : [dim]{source}[/dim]")
+    console.print(f"  Target  : [green]{dest_root}[/green]")
+    console.print(f"  Mode    : {'[dim]auto[/dim]' if auto else '[cyan]interactive[/cyan]'}")
+    console.print(
+        f"  Action  : "
+        f"{'[yellow]dry-run[/yellow]' if dry_run else ('[dim]copy[/dim]' if do_copy else '[dim]move[/dim]')}"
+    )
+
+    if dest_root.exists() and not dry_run:
+        if not auto:
+            if not Confirm.ask(f"Destination {dest_root} already exists. Continue?"):
+                console.print("Aborted.")
+                return
+
+    # ------------------------------------------------------------------ scan
+    console.print("\n[bold]Scanning project...[/bold]")
+    scanner = ProjectScanner(source)
+    classified = scanner.scan()
+    scanner.print_summary(classified)
+
+    # ------------------------------------------------------------------ build plan
+    # List of (src_absolute, dest_absolute) pairs
+    plan: list[tuple[Path, Path]] = []
+    skipped_regen: list[str] = []
+
+    for cat, files in classified.items():
+        if not files:
+            continue
+
+        default_subdir = CATEGORY_DEFAULT_DIRS.get(cat, "_research")
+        if "{package_name}" in default_subdir:
+            default_subdir = default_subdir.replace("{package_name}", package_name)
+
+        target_dir = dest_root / default_subdir if default_subdir else dest_root
+
+        if not auto:
+            suffix = f"[green]{target_dir.name}[/green]" if default_subdir else "[green].[/green]"
+            console.print(
+                f"\n[bold cyan]{CATEGORY_DESCRIPTIONS.get(cat, cat)}[/bold cyan] "
+                f"({len(files)} files) → {suffix}"
+            )
+            for f in files:
+                rel = f.relative_to(source)
+                marker = "  [dim italic](regenerated by pywatson)[/dim italic]" \
+                    if f.name in _REGENERATED_FILES else ""
+                console.print(f"  [dim]{rel}[/dim]{marker}")
+
+            choice = click.prompt(
+                "  [y]es / [s]kip / [r]ename target",
+                default="y",
+                type=click.Choice(["y", "s", "r"], case_sensitive=False),
+                show_choices=False,
+            )
+            if choice == "s":
+                continue
+            if choice == "r":
+                new_sub = click.prompt("  New target (relative to project root)")
+                target_dir = dest_root / new_sub
+
+        for f in files:
+            if f.name in _REGENERATED_FILES:
+                skipped_regen.append(f.name)
+                continue
+            # Skip files that are inside dest_root to avoid same-file copies
+            try:
+                f.resolve().relative_to(dest_root.resolve())
+                continue  # this file is already inside the destination
+            except ValueError:
+                pass
+            # Flatten: place file directly in target_dir (no source subdirectory preserved)
+            dest_file = target_dir / f.name
+            plan.append((f, dest_file))
+
+    # ------------------------------------------------------------------ dry run output
+    if dry_run:
+        console.print(
+            f"\n[bold yellow]Dry run — {len(plan)} file(s) would be "
+            f"{'copied' if do_copy else 'moved'}:[/bold yellow]"
+        )
+        for src_f, dst_f in plan:
+            src_rel = src_f.relative_to(source)
+            dst_rel = dst_f.relative_to(dest_root)
+            console.print(f"  [dim]{src_rel}[/dim]  →  [green]{dst_rel}[/green]")
+        if skipped_regen:
+            console.print(
+                f"\n  [dim]Skipped (regenerated): {', '.join(set(skipped_regen))}[/dim]"
+            )
+        return  # ← exit here, nothing written
+
+    # ------------------------------------------------------------------ confirm
+    if not auto:
+        if not Confirm.ask(f"\nCreate project at {dest_root}?"):
+            console.print("Aborted.")
+            return
+
+    # ------------------------------------------------------------------ scaffold
+    scaffolder = ProjectScaffolder(
+        proj_name,
+        dest_root,
+        project_type=project_type,
+        license_type=license_type,
+        python_version=python_version,
+    )
+    scaffolder.create_project_structure()
+
+    # Pywatson boilerplate (placed first so user files can overwrite on collision)
+    scaffolder.create_gitignore()
+    scaffolder.create_license(author_name)
+    scaffolder._copy_utils_file()
+
+    # Minimal __init__.py and tests/__init__.py to make packages importable
+    pkg_init = dest_root / "src" / package_name / "__init__.py"
+    if not pkg_init.exists():
+        pkg_init.write_text(f'"""Package {proj_name}."""\n')
+
+    tests_init = dest_root / "tests" / "__init__.py"
+    if not tests_init.exists():
+        tests_init.write_text("# Tests package\n")
+
+    # Generate README only if source has no README (docs category gets copied next)
+    has_source_readme = any(
+        f.name.lower() in {"readme.md", "readme.rst", "readme.txt"}
+        for f in classified.get("docs", [])
+    )
+    if not has_source_readme:
+        scaffolder.create_readme(author_name, author_email, [], description)
+
+    # ------------------------------------------------------------------ copy files
+    n_copied = 0
+    for src_f, dst_f in plan:
+        dst_f.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            if do_copy:
+                shutil.copy2(src_f, dst_f)
+            else:
+                shutil.move(str(src_f), str(dst_f))
+            n_copied += 1
+        except shutil.SameFileError:
+            # Source and destination resolved to the same inode — skip silently
+            continue
+
+    # ------------------------------------------------------------------ optional uv
+    if not no_uv:
+        console.print("\n[bold blue]Initialising uv project...[/bold blue]")
+        scaffolder.initialize_uv_project()
+
+    # ------------------------------------------------------------------ finish
+    console.print(f"\n[bold green]✓ Project adopted at {dest_root}[/bold green]")
+    console.print(f"  Files copied : {n_copied}")
+    if skipped_regen:
+        console.print(
+            f"  Skipped      : {', '.join(set(skipped_regen))} "
+            f"[dim](regenerated by pywatson)[/dim]"
+        )
+    console.print("\n[bold]Next steps:[/bold]")
+    console.print(f"  cd {dest_root.name}")
+    if no_uv:
+        console.print("  uv sync       # install dependencies")
+    console.print("  uv run pytest")
 
 
 if __name__ == "__main__":
