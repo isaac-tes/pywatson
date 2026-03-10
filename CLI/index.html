@@ -25,7 +25,7 @@
       
       
       <link rel="icon" href="../assets/logo.svg">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.5">
     
     
       
@@ -477,15 +477,15 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#pywatson-init-scaffold-a-new-project" class="md-nav__link">
+  <a href="#pywatson-project-name-name-scaffold-a-new-project-non-interactive" class="md-nav__link">
     <span class="md-ellipsis">
       
-        pywatson init — scaffold a new project
+        pywatson --project-name NAME — scaffold a new project (non-interactive)
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="pywatson init — scaffold a new project">
+    <nav class="md-nav" aria-label="pywatson --project-name NAME — scaffold a new project (non-interactive)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -1040,15 +1040,15 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#pywatson-init-scaffold-a-new-project" class="md-nav__link">
+  <a href="#pywatson-project-name-name-scaffold-a-new-project-non-interactive" class="md-nav__link">
     <span class="md-ellipsis">
       
-        pywatson init — scaffold a new project
+        pywatson --project-name NAME — scaffold a new project (non-interactive)
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="pywatson init — scaffold a new project">
+    <nav class="md-nav" aria-label="pywatson --project-name NAME — scaffold a new project (non-interactive)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -1287,15 +1287,15 @@
 
 <h1 id="pywatson-cli-reference">PyWatson CLI Reference<a class="headerlink" href="#pywatson-cli-reference" title="Permanent link">&para;</a></h1>
 <p>Complete reference for the <code>pywatson</code> command-line interface.</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pywatson [--version] [--help] COMMAND [OPTIONS] [ARGS...]
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pywatson [--version] [--help] [--project-name NAME] [OPTIONS]
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>pywatson init
 </span></code></pre></div>
-<p><code>pywatson-init PROJECT_NAME</code> is a backward-compatible alias for
-<code>pywatson init PROJECT_NAME</code>.</p>
 <hr />
-<h2 id="pywatson-init-scaffold-a-new-project"><code>pywatson init</code> — scaffold a new project<a class="headerlink" href="#pywatson-init-scaffold-a-new-project" title="Permanent link">&para;</a></h2>
-<p>Creates a new Python scientific project with modern tooling (uv, ruff, pytest)
-and DrWatson.jl-style utilities.</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>pywatson init [OPTIONS] PROJECT_NAME
+<h2 id="pywatson-project-name-name-scaffold-a-new-project-non-interactive"><code>pywatson --project-name NAME</code> — scaffold a new project (non-interactive)<a class="headerlink" href="#pywatson-project-name-name-scaffold-a-new-project-non-interactive" title="Permanent link">&para;</a></h2>
+<p>Creates a new Python scientific project non-interactively.
+All parameters are passed as flags; if <code>--project-name</code> is omitted the help
+text is shown.</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>pywatson --project-name NAME [OPTIONS]
 </span></code></pre></div>
 <h3 id="options">Options<a class="headerlink" href="#options" title="Permanent link">&para;</a></h3>
 <table>
@@ -1307,6 +1307,11 @@ and DrWatson.jl-style utilities.</p>
 </tr>
 </thead>
 <tbody>
+<tr>
+<td><code>--project-name TEXT</code></td>
+<td>—</td>
+<td>Name of the new project (required)</td>
+</tr>
 <tr>
 <td><code>--path</code>, <code>-p PATH</code></td>
 <td><code>.</code></td>
@@ -1324,7 +1329,7 @@ and DrWatson.jl-style utilities.</p>
 </tr>
 <tr>
 <td><code>--description TEXT</code></td>
-<td><em>(prompted)</em></td>
+<td><em>(empty)</em></td>
 <td>One-line project description</td>
 </tr>
 <tr>
@@ -1397,11 +1402,11 @@ and DrWatson.jl-style utilities.</p>
 </tbody>
 </table>
 <h3 id="examples">Examples<a class="headerlink" href="#examples" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># Minimal — prompts for missing info</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>pywatson<span class="w"> </span>init<span class="w"> </span>my-analysis
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># Minimal — git config auto-fills author info</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>pywatson<span class="w"> </span>--project-name<span class="w"> </span>my-analysis
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
 </span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># All flags up front</span>
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>pywatson<span class="w"> </span>init<span class="w"> </span>my-analysis<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>pywatson<span class="w"> </span>--project-name<span class="w"> </span>my-analysis<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">  </span>--author-name<span class="w"> </span><span class="s2">&quot;Jane Doe&quot;</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">  </span>--author-email<span class="w"> </span><span class="s2">&quot;jane@university.edu&quot;</span><span class="w"> </span><span class="se">\</span>
 </span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">  </span>--description<span class="w"> </span><span class="s2">&quot;Ising model Monte Carlo&quot;</span><span class="w"> </span><span class="se">\</span>
@@ -1410,15 +1415,15 @@ and DrWatson.jl-style utilities.</p>
 </span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="w">  </span>--linting<span class="w"> </span>strict
 </span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>
 </span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="c1"># Import conda dependencies</span>
-</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>pywatson<span class="w"> </span>init<span class="w"> </span>my-analysis<span class="w"> </span>--env-file<span class="w"> </span>environment.yml
+</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>pywatson<span class="w"> </span>--project-name<span class="w"> </span>my-analysis<span class="w"> </span>--env-file<span class="w"> </span>environment.yml
 </span><span id="__span-2-15"><a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>
 </span><span id="__span-2-16"><a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="c1"># With Docker reproducibility scaffolding</span>
-</span><span id="__span-2-17"><a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>pywatson<span class="w"> </span>init<span class="w"> </span>my-analysis<span class="w"> </span><span class="se">\</span>
+</span><span id="__span-2-17"><a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>pywatson<span class="w"> </span>--project-name<span class="w"> </span>my-analysis<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-2-18"><a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a><span class="w">  </span>--project-type<span class="w"> </span>full<span class="w"> </span><span class="se">\</span>
 </span><span id="__span-2-19"><a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a><span class="w">  </span>--docker
 </span></code></pre></div>
 <h3 id="what-gets-created">What gets created<a class="headerlink" href="#what-gets-created" title="Permanent link">&para;</a></h3>
-<p>A <code>pywatson init</code> run creates a ready-to-use project:</p>
+<p>A <code>pywatson</code> run creates a ready-to-use project:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>my-analysis/
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>├── src/my_analysis/
 </span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>│   ├── __init__.py          # Public API — all DrWatson helpers re-exported
@@ -1608,7 +1613,7 @@ keys and creation timestamps.</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="March 9, 2026 18:40:59 UTC"><span class="timeago" datetime="2026-03-09T18:40:59+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="March 9, 2026 18:40:59 UTC">2026-03-09</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="March 10, 2026 16:13:03 UTC"><span class="timeago" datetime="2026-03-10T16:13:03+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="March 10, 2026 16:13:03 UTC">2026-03-10</span>
   </span>
 
     
