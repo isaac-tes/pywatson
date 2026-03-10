@@ -275,7 +275,7 @@ For more details, see README.md and docs/QUICKSTART.md.
 
 ## Landing the Plane (Session Completion)
 
-**When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
+**When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds AND all CI pipelines pass.
 
 **MANDATORY WORKFLOW:**
 
@@ -289,14 +289,16 @@ For more details, see README.md and docs/QUICKSTART.md.
    git push
    git status  # MUST show "up to date with origin"
    ```
-5. **Clean up** - Clear stashes, prune remote branches
-6. **Verify** - All changes committed AND pushed
-7. **Hand off** - Provide context for next session
+5. **Wait for CI** - Run `gh run watch` or check `gh run list` until all pipeline runs (Tests, Build & Deploy Docs) show status `completed` with conclusion `success`. If any fail, fix and re-push.
+6. **Clean up** - Clear stashes, prune remote branches
+7. **Verify** - All changes committed, pushed, AND CI green
+8. **Hand off** - Provide context for next session
 
 **CRITICAL RULES:**
-- Work is NOT complete until `git push` succeeds
+- Work is NOT complete until `git push` succeeds AND all CI pipelines pass
 - NEVER stop before pushing - that leaves work stranded locally
 - NEVER say "ready to push when you are" - YOU must push
-- If push fails, resolve and retry until it succeeds
+- If push fails or CI fails, resolve and retry until everything is green
+- Always check `gh run list` after pushing to confirm pipeline status
 
 <!-- END BEADS INTEGRATION -->

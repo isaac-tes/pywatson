@@ -1254,8 +1254,8 @@ def cli(
     """PyWatson -- Python scientific project manager.
 
     \b
-    Non-interactive (all flags):
-      pywatson --project-name NAME [--author-name ...] [--flags]
+    Non-interactive (pass all values as flags):
+      pywatson --project-name NAME --author-name "..." --author-email "..."
 
     \b
     Interactive wizard:

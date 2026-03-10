@@ -67,9 +67,11 @@ N/A
 *   **DO** test after changes. Run `uv run pytest` or create a test project.
 *   **DO** check syntax. Your editor will highlight Python syntax errors.
 *   **DO** commit template changes. They're source code.
+*   **DO** check CI pipelines after every push: run `gh run list` and wait for all runs to show `completed / success` before considering work done. Fix any failures immediately.
 *   **DON'T** escape `{}` in templates. Not needed (that was the old problem!).
 *   **DON'T** edit generated projects. Edit the template instead.
 *   **DON'T** forget to update tests if you change templates significantly.
+*   **DON'T** declare a task complete if any CI pipeline (Tests, Build & Deploy Docs) is still running or has failed.
 
 
 <!-- BEGIN BEADS INTEGRATION -->
@@ -178,9 +180,11 @@ For more details, see README.md and docs/QUICKSTART.md.
 7. **Hand off** - Provide context for next session
 
 **CRITICAL RULES:**
-- Work is NOT complete until `git push` succeeds
+- Work is NOT complete until `git push` succeeds AND all CI pipelines pass
+- After every push, run `gh run list` and wait for all pipeline runs to complete successfully
 - NEVER stop before pushing - that leaves work stranded locally
 - NEVER say "ready to push when you are" - YOU must push
-- If push fails, resolve and retry until it succeeds
+- If push fails or CI fails, resolve and retry until everything is green
+- Always verify CI status: `gh run list --limit 5` after pushing
 
 <!-- END BEADS INTEGRATION -->
