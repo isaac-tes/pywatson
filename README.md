@@ -1,7 +1,7 @@
 # 🔬 PyWatson
 
-[![CI](https://github.com/isaac-tes/pywatson/actions/workflows/ci.yml/badge.svg)](https://github.com/isaac-tes/pywatson/actions/workflows/ci.yml)
-[![Docs](https://github.com/isaac-tes/pywatson/actions/workflows/docs.yml/badge.svg)](https://github.com/isaac-tes/pywatson/actions/workflows/docs.yml)
+[![CI](https://img.shields.io/github/actions/workflow/status/isaac-tes/pywatson/ci.yml?branch=main&label=CI)](https://github.com/isaac-tes/pywatson/actions/workflows/ci.yml)
+[![Docs](https://img.shields.io/github/actions/workflow/status/isaac-tes/pywatson/docs.yml?branch=main&label=Docs)](https://github.com/isaac-tes/pywatson/actions/workflows/docs.yml)
 [![docs site](https://img.shields.io/badge/docs-material-blue)](https://isaac-tes.github.io/pywatson/)
 [![Python](https://img.shields.io/badge/python-3.12%2B-blue)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](https://github.com/isaac-tes/pywatson/blob/main/LICENSE)

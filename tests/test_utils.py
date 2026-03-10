@@ -868,6 +868,7 @@ class TestProduceOrLoad:
 
     def test_returns_data_and_path_on_first_call(self, mock_project):
         """First call produces data and returns (data, Path)."""
+
         def make():
             return {"v": 42}
 
@@ -878,6 +879,7 @@ class TestProduceOrLoad:
 
     def test_returns_cached_data_and_same_path_on_second_call(self, mock_project):
         """Second call loads from cache and returns same path."""
+
         def make():
             return {"v": 99}
 
@@ -992,6 +994,7 @@ class TestTmpsave:
     def test_data_readable_inside_context(self):
         """HDF5 data saved by tmpsave is readable inside the context."""
         import h5py
+
         with tmpsave({"z": np.zeros((3, 3))}) as p:
             with h5py.File(p, "r") as f:
                 assert "z" in f
@@ -1021,6 +1024,7 @@ class TestSnapshotEnvironment:
     def test_python_version_matches_runtime(self):
         """Python version matches sys.version_info."""
         import sys
+
         result = snapshot_environment()
         version = result["python_version"]
         assert str(sys.version_info.major) in version

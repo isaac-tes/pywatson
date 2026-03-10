@@ -36,21 +36,38 @@ theme:
         icon: material/weather-sunny
         name: Switch to light mode
   features:
-    - navigation.instant
+    #Navigation
+    - navigation.instant      # Instant loading
     - navigation.instant.prefetch
-    - navigation.tracking
-    - navigation.sections
-    - navigation.path
-    - navigation.indexes
-    - navigation.top
-    - navigation.footer
-    - search.suggest
-    - search.highlight
-    - search.share
+    - navigation.instant.progress
+    - navigation.tracking     # Anchor tracking
+    # - navigation.tabs         # Top-level sections in tabs
+    # - navigation.tabs.sticky  # Sticky navigation tabs
+    - navigation.sections     # Sections in navigation/sidebar
+    # - navigation.expand       # Expand all sections by default
+    - navigation.path         # Breadcrumbs
+    - navigation.indexes      # Section index pages
+    - navigation.top          # Back to top button
+    - navigation.footer       # Enable footer navigation
+    # permalinks
+
+    # Search
+    - search.suggest # Enable search suggestions
+    - search.highlight # Highlight search terms in results
+    - search.share           # Share search results
+    
+    # Header
+    - header.autohide # Enable auto-hiding header on scroll
+    
+    # Content
     - content.code.copy
-    - content.code.annotate
     - content.tooltips
-    - toc.follow
+    # - content.code.annotate  # Annotate code blocks with line numbers
+    # - content.code.select # Enable code selection feature
+    
+    # Table of contents
+    - toc.follow             # Follow TOC
+    # - toc.integrate          # Integrate TOC into navigation
 
 markdown_extensions:
   - admonition

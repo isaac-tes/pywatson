@@ -119,18 +119,13 @@ def structured_wrong_project(tmp_path: Path) -> Path:
     # Notebooks
     nb_dir = root / "notebooks"
     nb_dir.mkdir()
-    nb_content = (
-        '{"cells": [], "metadata": {}, "nbformat": 4, "nbformat_minor": 5}'
-    )
+    nb_content = '{"cells": [], "metadata": {}, "nbformat": 4, "nbformat_minor": 5}'
     (nb_dir / "exploration.ipynb").write_text(nb_content)
 
     # Tests
     tests_dir = root / "tests"
     tests_dir.mkdir()
-    (tests_dir / "test_sim.py").write_text(
-        "def test_run_simulation():\n"
-        "    assert True\n"
-    )
+    (tests_dir / "test_sim.py").write_text("def test_run_simulation():\n    assert True\n")
 
     # Shell script
     (root / "run_all.sh").write_text("#!/bin/bash\npython simulation.py\n")
@@ -216,9 +211,7 @@ def nested_research_project(tmp_path: Path) -> Path:
         "if __name__ == '__main__':\n"
         "    main()\n"
     )
-    (experiments / "config.yaml").write_text(
-        "model:\n  hidden: 64\ntraining:\n  lr: 0.001\n"
-    )
+    (experiments / "config.yaml").write_text("model:\n  hidden: 64\ntraining:\n  lr: 0.001\n")
 
     results = root / "results"
     results.mkdir()
@@ -318,31 +311,23 @@ class TestProjectScanner:
     # structured_wrong_project
     # ------------------------------------------------------------------
 
-    def test_structured_wrong_finds_notebooks(
-        self, structured_wrong_project: Path
-    ) -> None:
+    def test_structured_wrong_finds_notebooks(self, structured_wrong_project: Path) -> None:
         classified = ProjectScanner(structured_wrong_project).scan()
         nb_names = {f.name for f in classified["notebooks"]}
         assert "exploration.ipynb" in nb_names
 
-    def test_structured_wrong_finds_tests(
-        self, structured_wrong_project: Path
-    ) -> None:
+    def test_structured_wrong_finds_tests(self, structured_wrong_project: Path) -> None:
         classified = ProjectScanner(structured_wrong_project).scan()
         names = {f.name for f in classified["tests"]}
         assert "test_sim.py" in names
 
-    def test_structured_wrong_finds_data(
-        self, structured_wrong_project: Path
-    ) -> None:
+    def test_structured_wrong_finds_data(self, structured_wrong_project: Path) -> None:
         classified = ProjectScanner(structured_wrong_project).scan()
         data_names = {f.name for f in classified["data"]}
         assert "raw_data.csv" in data_names
         assert "params.json" in data_names
 
-    def test_structured_wrong_shell_script_is_script(
-        self, structured_wrong_project: Path
-    ) -> None:
+    def test_structured_wrong_shell_script_is_script(self, structured_wrong_project: Path) -> None:
         classified = ProjectScanner(structured_wrong_project).scan()
         script_names = {f.name for f in classified["scripts"]}
         assert "run_all.sh" in script_names
@@ -351,9 +336,7 @@ class TestProjectScanner:
     # notebook_heavy_project
     # ------------------------------------------------------------------
 
-    def test_notebook_heavy_finds_all_notebooks(
-        self, notebook_heavy_project: Path
-    ) -> None:
+    def test_notebook_heavy_finds_all_notebooks(self, notebook_heavy_project: Path) -> None:
         classified = ProjectScanner(notebook_heavy_project).scan()
         nb_names = {f.name for f in classified["notebooks"]}
         assert nb_names == {
@@ -362,9 +345,7 @@ class TestProjectScanner:
             "Experiment_3.ipynb",
         }
 
-    def test_notebook_heavy_helper_is_source(
-        self, notebook_heavy_project: Path
-    ) -> None:
+    def test_notebook_heavy_helper_is_source(self, notebook_heavy_project: Path) -> None:
         classified = ProjectScanner(notebook_heavy_project).scan()
         source_names = {f.name for f in classified["source"]}
         assert "helper_functions.py" in source_names
@@ -373,36 +354,28 @@ class TestProjectScanner:
     # nested_research_project
     # ------------------------------------------------------------------
 
-    def test_nested_source_files_classified_as_source(
-        self, nested_research_project: Path
-    ) -> None:
+    def test_nested_source_files_classified_as_source(self, nested_research_project: Path) -> None:
         """model.py and data_loader.py have class definitions → source."""
         classified = ProjectScanner(nested_research_project).scan()
         source_names = {f.name for f in classified["source"]}
         assert "model.py" in source_names
         assert "data_loader.py" in source_names
 
-    def test_nested_experiment_scripts_are_scripts(
-        self, nested_research_project: Path
-    ) -> None:
+    def test_nested_experiment_scripts_are_scripts(self, nested_research_project: Path) -> None:
         """run_exp*.py have if __name__ == '__main__' → scripts."""
         classified = ProjectScanner(nested_research_project).scan()
         script_names = {f.name for f in classified["scripts"]}
         assert "run_exp1.py" in script_names
         assert "run_exp2.py" in script_names
 
-    def test_nested_csv_files_are_data(
-        self, nested_research_project: Path
-    ) -> None:
+    def test_nested_csv_files_are_data(self, nested_research_project: Path) -> None:
         classified = ProjectScanner(nested_research_project).scan()
         data_names = {f.name for f in classified["data"]}
         assert "exp1_output.csv" in data_names
         assert "exp2_output.csv" in data_names
         assert "summary.json" in data_names
 
-    def test_nested_yaml_config_is_config(
-        self, nested_research_project: Path
-    ) -> None:
+    def test_nested_yaml_config_is_config(self, nested_research_project: Path) -> None:
         classified = ProjectScanner(nested_research_project).scan()
         config_names = {f.name for f in classified["config"]}
         assert "config.yaml" in config_names
@@ -479,28 +452,17 @@ class TestProjectScanner:
 
     def test_classify_script_by_main_guard(self, tmp_path: Path) -> None:
         f = tmp_path / "runner.py"
-        f.write_text(
-            "if __name__ == '__main__':\n"
-            "    print('running')\n"
-        )
+        f.write_text("if __name__ == '__main__':\n    print('running')\n")
         assert ProjectScanner(tmp_path)._classify_python_file(f) == "scripts"
 
     def test_classify_script_by_click_import(self, tmp_path: Path) -> None:
         f = tmp_path / "cli.py"
-        f.write_text(
-            "import click\n\n"
-            "@click.command()\ndef main():\n"
-            "    pass\n"
-        )
+        f.write_text("import click\n\n@click.command()\ndef main():\n    pass\n")
         assert ProjectScanner(tmp_path)._classify_python_file(f) == "scripts"
 
     def test_classify_source_by_class_def(self, tmp_path: Path) -> None:
         f = tmp_path / "model.py"
-        f.write_text(
-            "class MyModel:\n"
-            "    def __init__(self) -> None:\n"
-            "        pass\n"
-        )
+        f.write_text("class MyModel:\n    def __init__(self) -> None:\n        pass\n")
         assert ProjectScanner(tmp_path)._classify_python_file(f) == "source"
 
     def test_classify_source_by_def_only(self, tmp_path: Path) -> None:

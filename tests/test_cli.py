@@ -16,9 +16,7 @@ from pywatson.core import cli
 
 def _make_pyproject(path: Path, name: str = "test-project") -> None:
     """Write a minimal pyproject.toml so status recognises the project root."""
-    (path / "pyproject.toml").write_text(
-        f'[project]\nname = "{name}"\nversion = "0.1.0"\n'
-    )
+    (path / "pyproject.toml").write_text(f'[project]\nname = "{name}"\nversion = "0.1.0"\n')
 
 
 def _write_h5(filepath: Path, datasets: dict | None = None) -> None:

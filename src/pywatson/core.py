@@ -42,6 +42,7 @@ def _git_config(key: str) -> str:
     except (subprocess.SubprocessError, FileNotFoundError):
         return ""
 
+
 # Valid project types and their descriptions
 PROJECT_TYPES = {
     "default": "PyWatson standard (data/{sims, exp_raw, exp_pro})",
@@ -74,20 +75,22 @@ CATEGORY_DEFAULT_DIRS: dict[str, str] = {
     "scripts": "scripts",
     "source": "src/{package_name}",
     "docs": "docs",
-    "config": "",        # empty string → project root
+    "config": "",  # empty string → project root
     "images": "plots",
     "other": "_research",
 }
 
 # Files that pywatson regenerates from templates; skip copying from source.
-_REGENERATED_FILES: frozenset[str] = frozenset({
-    "pyproject.toml",
-    "setup.py",
-    "setup.cfg",
-    "MANIFEST.in",
-    "tox.ini",
-    "requirements.txt",
-})
+_REGENERATED_FILES: frozenset[str] = frozenset(
+    {
+        "pyproject.toml",
+        "setup.py",
+        "setup.cfg",
+        "MANIFEST.in",
+        "tox.ini",
+        "requirements.txt",
+    }
+)
 
 # Valid license choices and their template filenames
 LICENSE_TEMPLATES = {
@@ -478,9 +481,9 @@ class ProjectScaffolder:
         deps_list = "\n".join(
             [
                 "- **{}**: {}".format(
-                    dep.split("==")[0] if "==" in dep else (
-                        dep.split(">=")[0] if ">=" in dep else dep
-                    ),
+                    dep.split("==")[0]
+                    if "==" in dep
+                    else (dep.split(">=")[0] if ">=" in dep else dep),
                     dep,
                 )
                 for dep in dependencies
@@ -698,23 +701,66 @@ class ProjectScanner:
         source_path: Root of the existing project to scan.
     """
 
-    DATA_EXTENSIONS: frozenset[str] = frozenset({
-        ".h5", ".hdf5", ".npz", ".npy", ".csv", ".json", ".pkl", ".pickle",
-        ".mat", ".nc", ".zarr", ".parquet", ".feather", ".xlsx", ".xls",
-    })
+    DATA_EXTENSIONS: frozenset[str] = frozenset(
+        {
+            ".h5",
+            ".hdf5",
+            ".npz",
+            ".npy",
+            ".csv",
+            ".json",
+            ".pkl",
+            ".pickle",
+            ".mat",
+            ".nc",
+            ".zarr",
+            ".parquet",
+            ".feather",
+            ".xlsx",
+            ".xls",
+        }
+    )
     NOTEBOOK_EXTENSIONS: frozenset[str] = frozenset({".ipynb"})
     DOC_EXTENSIONS: frozenset[str] = frozenset({".md", ".rst", ".tex", ".pdf"})
-    CONFIG_EXTENSIONS: frozenset[str] = frozenset({
-        ".yml", ".yaml", ".cfg", ".ini", ".toml", ".env",
-    })
-    IMAGE_EXTENSIONS: frozenset[str] = frozenset({
-        ".png", ".jpg", ".jpeg", ".svg", ".eps", ".gif",
-    })
-    IGNORE_DIRS: frozenset[str] = frozenset({
-        ".git", "__pycache__", ".venv", "venv", "env", ".env",
-        "node_modules", ".mypy_cache", ".ruff_cache", ".pytest_cache",
-        ".tox", ".nox", "dist", "build", "site-packages",
-    })
+    CONFIG_EXTENSIONS: frozenset[str] = frozenset(
+        {
+            ".yml",
+            ".yaml",
+            ".cfg",
+            ".ini",
+            ".toml",
+            ".env",
+        }
+    )
+    IMAGE_EXTENSIONS: frozenset[str] = frozenset(
+        {
+            ".png",
+            ".jpg",
+            ".jpeg",
+            ".svg",
+            ".eps",
+            ".gif",
+        }
+    )
+    IGNORE_DIRS: frozenset[str] = frozenset(
+        {
+            ".git",
+            "__pycache__",
+            ".venv",
+            "venv",
+            "env",
+            ".env",
+            "node_modules",
+            ".mypy_cache",
+            ".ruff_cache",
+            ".pytest_cache",
+            ".tox",
+            ".nox",
+            "dist",
+            "build",
+            "site-packages",
+        }
+    )
     IGNORE_SUFFIXES: frozenset[str] = frozenset({".pyc", ".pyo", ".pyd"})
 
     def __init__(self, source_path: Path) -> None:
@@ -729,8 +775,15 @@ class ProjectScanner:
             ``source``, ``docs``, ``config``, ``images``, ``other``.
         """
         classified: dict[str, list[Path]] = {
-            "tests": [], "notebooks": [], "data": [], "scripts": [],
-            "source": [], "docs": [], "config": [], "images": [], "other": [],
+            "tests": [],
+            "notebooks": [],
+            "data": [],
+            "scripts": [],
+            "source": [],
+            "docs": [],
+            "config": [],
+            "images": [],
+            "other": [],
         }
         for path in self._iter_files():
             cat = self._classify(path)
@@ -745,8 +798,7 @@ class ProjectScanner:
             rel = path.relative_to(self.source_path)
             # Skip if any parent directory is in the ignore set
             if any(
-                part in self.IGNORE_DIRS or part.endswith(".egg-info")
-                for part in rel.parts[:-1]
+                part in self.IGNORE_DIRS or part.endswith(".egg-info") for part in rel.parts[:-1]
             ):
                 continue
             if path.suffix in self.IGNORE_SUFFIXES:
@@ -765,8 +817,13 @@ class ProjectScanner:
         if ext in self.IMAGE_EXTENSIONS:
             return "images"
         if name.lower() in {
-            "readme.md", "readme.rst", "readme.txt",
-            "changelog.md", "contributing.md", "license", "licence",
+            "readme.md",
+            "readme.rst",
+            "readme.txt",
+            "changelog.md",
+            "contributing.md",
+            "license",
+            "licence",
         }:
             return "docs"
         if ext in self.DOC_EXTENSIONS:
@@ -776,8 +833,12 @@ class ProjectScanner:
         if ext in self.CONFIG_EXTENSIONS:
             return "config"
         if name in {
-            "requirements.txt", "setup.py", "setup.cfg", "pyproject.toml",
-            "MANIFEST.in", "tox.ini",
+            "requirements.txt",
+            "setup.py",
+            "setup.cfg",
+            "pyproject.toml",
+            "MANIFEST.in",
+            "tox.ini",
         }:
             return "config"
         if ext == ".py":
@@ -852,8 +913,17 @@ class ProjectScanner:
         table.add_column("Examples", style="dim")
 
         total = 0
-        for cat in ("tests", "notebooks", "data", "scripts", "source",
-                    "docs", "config", "images", "other"):
+        for cat in (
+            "tests",
+            "notebooks",
+            "data",
+            "scripts",
+            "source",
+            "docs",
+            "config",
+            "images",
+            "other",
+        ):
             files = classified.get(cat, [])
             if not files:
                 continue
@@ -1012,7 +1082,9 @@ def init_project(
     linting_mode: str,
     type_checker: str,
     env_file: str | None,
-    force: bool,    docker: bool,) -> None:
+    force: bool,
+    docker: bool,
+) -> None:
     """Create a new Python project with modern tooling and best practices.
 
     This tool creates a complete project structure similar to DrWatson.jl
@@ -1181,6 +1253,7 @@ def status_command() -> None:
     if pyproject.exists():
         content = pyproject.read_text()
         import re as _re
+
         m = _re.search(r'name\s*=\s*"([^"]+)"', content)
         if m:
             console.print(f"  Name       : [cyan]{m.group(1)}[/cyan]")
@@ -1211,15 +1284,20 @@ def status_command() -> None:
     try:
         commit = subprocess.run(
             ["git", "rev-parse", "--short", "HEAD"],
-            cwd=root, capture_output=True, text=True, check=False
+            cwd=root,
+            capture_output=True,
+            text=True,
+            check=False,
         ).stdout.strip()
         branch = subprocess.run(
             ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-            cwd=root, capture_output=True, text=True, check=False
+            cwd=root,
+            capture_output=True,
+            text=True,
+            check=False,
         ).stdout.strip()
         dirty = subprocess.run(
-            ["git", "status", "--porcelain"],
-            cwd=root, capture_output=True, text=True, check=False
+            ["git", "status", "--porcelain"], cwd=root, capture_output=True, text=True, check=False
         ).stdout.strip()
         console.print("\n[bold]Git:[/bold]")
         console.print(f"  Branch  : {branch}")
@@ -1319,12 +1397,14 @@ def summary_command(subdir: str | None, recursive: bool) -> None:
 @cli.command("adopt")
 @click.argument("source_path", default=".", type=click.Path(exists=True, file_okay=False))
 @click.option(
-    "--project-name", "-n",
+    "--project-name",
+    "-n",
     default=None,
     help="Name for the new project (default: source directory name).",
 )
 @click.option(
-    "--output-path", "-o",
+    "--output-path",
+    "-o",
     type=click.Path(),
     default=None,
     help="Parent directory for the new project (default: alongside source with _pywatson suffix).",
@@ -1365,14 +1445,16 @@ def summary_command(subdir: str | None, recursive: bool) -> None:
 )
 @click.option("--description", default="", help="Short project description.")
 @click.option(
-    "--project-type", "-t",
+    "--project-type",
+    "-t",
     type=click.Choice(list(PROJECT_TYPES.keys()), case_sensitive=False),
     default="default",
     show_default=True,
     help="Target pywatson project type.",
 )
 @click.option(
-    "--license", "license_type",
+    "--license",
+    "license_type",
     type=click.Choice(list(LICENSE_TEMPLATES.keys()), case_sensitive=False),
     default="MIT",
     show_default=True,
@@ -1484,8 +1566,11 @@ def adopt_command(
             )
             for f in files:
                 rel = f.relative_to(source)
-                marker = "  [dim italic](regenerated by pywatson)[/dim italic]" \
-                    if f.name in _REGENERATED_FILES else ""
+                marker = (
+                    "  [dim italic](regenerated by pywatson)[/dim italic]"
+                    if f.name in _REGENERATED_FILES
+                    else ""
+                )
                 console.print(f"  [dim]{rel}[/dim]{marker}")
 
             choice = click.prompt(
@@ -1525,9 +1610,7 @@ def adopt_command(
             dst_rel = dst_f.relative_to(dest_root)
             console.print(f"  [dim]{src_rel}[/dim]  →  [green]{dst_rel}[/green]")
         if skipped_regen:
-            console.print(
-                f"\n  [dim]Skipped (regenerated): {', '.join(set(skipped_regen))}[/dim]"
-            )
+            console.print(f"\n  [dim]Skipped (regenerated): {', '.join(set(skipped_regen))}[/dim]")
         return  # ← exit here, nothing written
 
     # ------------------------------------------------------------------ confirm

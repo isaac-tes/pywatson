@@ -35,12 +35,14 @@ import numpy as np
 
 try:
     import pandas as pd  # type: ignore[import]
+
     _HAS_PANDAS = True
 except ImportError:
     _HAS_PANDAS = False
 
 try:
     import zarr  # type: ignore[import]
+
     _HAS_ZARR = True
 except ImportError:
     _HAS_ZARR = False
@@ -753,7 +755,7 @@ def collect_results(
         folder = datadir(create=False)
 
     if not folder.exists():
-        return (pd.DataFrame() if as_dataframe and _HAS_PANDAS else [])
+        return pd.DataFrame() if as_dataframe and _HAS_PANDAS else []
 
     pattern = "**/*.h5" if recursive else "*.h5"
     results: list[dict[str, Any]] = []
@@ -1049,6 +1051,7 @@ def set_random_seed(seed: int) -> dict[str, int]:
 
     try:
         import torch  # type: ignore[import]
+
         torch.manual_seed(seed)
     except ImportError:
         pass

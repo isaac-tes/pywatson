@@ -4,11 +4,7 @@ If you use PyWatson in your research, please cite it.
 
 ## Repository
 
-PyWatson is currently available on GitHub:
-
-```
-https://github.com/isaac-tes/pywatson
-```
+PyWatson is currently available on GitHub: [https://github.com/isaac-tes/pywatson](https://github.com/isaac-tes/pywatson)
 
 > **Note:** A citable release with a persistent DOI (via Zenodo) will be added
 > once the first stable version is published. This page will be updated with

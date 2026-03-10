@@ -115,13 +115,22 @@ def scaffolded_project() -> Generator[Path, None, None]:
     pywatson_root = Path(__file__).parent.parent  # repo root
     result = subprocess.run(
         [
-            "uv", "run", "pywatson", "init", project_name,
-            "--author-name", "E2E Test",
-            "--author-email", "e2e@test.com",
-            "--description", "E2E Docker reproducibility test project",
-            "--project-type", "full",
+            "uv",
+            "run",
+            "pywatson",
+            "init",
+            project_name,
+            "--author-name",
+            "E2E Test",
+            "--author-email",
+            "e2e@test.com",
+            "--description",
+            "E2E Docker reproducibility test project",
+            "--project-type",
+            "full",
             "--docker",
-            "--path", str(tmp_dir),
+            "--path",
+            str(tmp_dir),
         ],
         capture_output=True,
         text=True,
@@ -206,7 +215,6 @@ def docker_image(scaffolded_project: Path) -> Generator[str, None, None]:
 class TestDockerBuild:
     """Tests that ``docker build`` produces a functional image."""
 
-
     def test_image_tag_exists_after_build(self, docker_image):
         """The image must appear in ``docker images`` output after building."""
         result = subprocess.run(
@@ -215,10 +223,7 @@ class TestDockerBuild:
             text=True,
         )
         assert result.returncode == 0
-        assert result.stdout.strip() != "", (
-            f"Image '{docker_image}' not found after build"
-        )
-
+        assert result.stdout.strip() != "", f"Image '{docker_image}' not found after build"
 
     def test_image_has_correct_entrypoint(self, docker_image):
         """The image ENTRYPOINT must reference analyze_data.py."""
@@ -232,7 +237,6 @@ class TestDockerBuild:
             f"Expected analyze_data.py in ENTRYPOINT, got: {result.stdout.strip()}"
         )
 
-
     def test_image_working_dir_is_workspace(self, docker_image):
         """The image WORKDIR must be /workspace."""
         result = subprocess.run(
@@ -245,7 +249,6 @@ class TestDockerBuild:
             f"Expected WorkingDir=/workspace, got: {result.stdout.strip()}"
         )
 
-
     def test_uv_is_available_inside_image(self, docker_image):
         """uv must be on PATH inside the container."""
         # Override ENTRYPOINT so we run ``uv --version`` directly rather than
@@ -256,9 +259,7 @@ class TestDockerBuild:
             text=True,
             timeout=30,
         )
-        assert result.returncode == 0, (
-            f"uv not found inside image:\n{result.stderr}"
-        )
+        assert result.returncode == 0, f"uv not found inside image:\n{result.stderr}"
         assert "uv" in result.stdout.lower(), result.stdout
 
 
@@ -267,7 +268,6 @@ class TestDockerReproduceScenario:
     The Zenodo reader scenario: mount data (read-only) + empty plots dir,
     run the container, verify plots are produced.
     """
-
 
     def test_docker_run_reproduce_produces_plots(self, scaffolded_project, docker_image):
         """
@@ -291,9 +291,13 @@ class TestDockerReproduceScenario:
 
         result = subprocess.run(
             [
-                "docker", "run", "--rm",
-                "-v", f"{data_dir}:/workspace/data:ro",
-                "-v", f"{plots_dir}:/workspace/plots",
+                "docker",
+                "run",
+                "--rm",
+                "-v",
+                f"{data_dir}:/workspace/data:ro",
+                "-v",
+                f"{plots_dir}:/workspace/plots",
                 docker_image,
             ],
             capture_output=True,
@@ -313,7 +317,6 @@ class TestDockerReproduceScenario:
             f"Container stdout:\n{result.stdout}"
         )
 
-
     def test_docker_run_fails_gracefully_without_data(self, scaffolded_project, docker_image):
         """
         Without data files, analyze_data.py should exit non-zero or print an
@@ -327,9 +330,13 @@ class TestDockerReproduceScenario:
             with tempfile.TemporaryDirectory() as tmp_plots_dir:
                 result = subprocess.run(
                     [
-                        "docker", "run", "--rm",
-                        "-v", f"{empty_data_dir}:/workspace/data:ro",
-                        "-v", f"{tmp_plots_dir}:/workspace/plots",
+                        "docker",
+                        "run",
+                        "--rm",
+                        "-v",
+                        f"{empty_data_dir}:/workspace/data:ro",
+                        "-v",
+                        f"{tmp_plots_dir}:/workspace/plots",
                         docker_image,
                     ],
                     capture_output=True,
@@ -350,7 +357,6 @@ class TestDockerReproduceScenario:
             "Container should report missing data files, but produced no error.\n"
             f"stdout: {result.stdout}\nstderr: {result.stderr}"
         )
-
 
     def test_docker_compose_reproduce_service_runs(self, scaffolded_project, docker_image):
         """
