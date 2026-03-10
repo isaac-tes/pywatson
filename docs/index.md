@@ -1,4 +1,4 @@
-# 🔬 PyWatson - Python scientific project management tool
+# 🔬 PyWatson - A Python scientific project management tool
 
 [![CI](https://github.com/isaac-tes/pywatson/actions/workflows/ci.yml/badge.svg)](https://github.com/isaac-tes/pywatson/actions/workflows/ci.yml)
 [![Docs](https://github.com/isaac-tes/pywatson/actions/workflows/docs.yml/badge.svg)](https://github.com/isaac-tes/pywatson/actions/workflows/docs.yml)
