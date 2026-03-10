@@ -859,6 +859,9 @@ class ProjectScanner:
             Category string: ``"tests"``, ``"scripts"``, or ``"source"``.
         """
         name = path.name
+        # Directory-based test detection: any parent named "tests" or "test"
+        if any(part in {"tests", "test"} for part in path.parts):
+            return "tests"
         # Name-based test detection
         if name.startswith("test_") or name.endswith("_test.py") or name == "conftest.py":
             return "tests"
@@ -1349,7 +1352,7 @@ def init_project() -> None:
             console.print(
                 f"[yellow]Warning: {env_file_input} not found, ignoring.[/yellow]"
             )
-    docker = click.confirm("Include Docker files?", default=False)
+    docker = click.confirm("Include Docker files? (default: No)", default=False)
 
     console.print("\n[bold]Summary:[/bold]")
     console.print(f"  Name      : [cyan]{project_name}[/cyan]")
@@ -1360,6 +1363,7 @@ def init_project() -> None:
     console.print(f"  Python    : [cyan]{python_version}[/cyan]")
     console.print(f"  Linting   : [cyan]{linting_mode}[/cyan]")
     console.print(f"  Checker   : [cyan]{type_checker}[/cyan]")
+    console.print(f"  Docker    : [cyan]{'yes' if docker else 'no'}[/cyan]")
     console.print(f"  Path      : [dim]{path}[/dim]")
     console.print()
     if not click.confirm("Continue?", default=True):

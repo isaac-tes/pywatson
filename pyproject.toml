@@ -1,6 +1,6 @@
 [project]
 name = "pywatson"
-version = "0.1.0"
+version = "0.0.1"
 description = "A Python scientific project management tool for creating well-structured, reproducible scientific computing projects"
 readme = "README.md"
 license = {text = "MIT"}

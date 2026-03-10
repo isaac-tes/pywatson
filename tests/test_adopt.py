@@ -470,6 +470,22 @@ class TestProjectScanner:
         f.write_text("def add(a: int, b: int) -> int:\n    return a + b\n")
         assert ProjectScanner(tmp_path)._classify_python_file(f) == "source"
 
+    def test_init_inside_tests_dir_is_tests(self, tmp_path: Path) -> None:
+        """Regression: tests/__init__.py must be classified as 'tests', not 'scripts'."""
+        tests_dir = tmp_path / "tests"
+        tests_dir.mkdir()
+        f = tests_dir / "__init__.py"
+        f.write_text("# Tests package\n")
+        assert ProjectScanner(tmp_path)._classify_python_file(f) == "tests"
+
+    def test_init_inside_test_dir_is_tests(self, tmp_path: Path) -> None:
+        """Regression: test/__init__.py must be classified as 'tests', not 'scripts'."""
+        test_dir = tmp_path / "test"
+        test_dir.mkdir()
+        f = test_dir / "__init__.py"
+        f.write_text("")
+        assert ProjectScanner(tmp_path)._classify_python_file(f) == "tests"
+
     # ------------------------------------------------------------------
     # print_summary smoke test
     # ------------------------------------------------------------------
