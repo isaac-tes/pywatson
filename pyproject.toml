@@ -46,7 +46,6 @@ dev = [
 
 [project.scripts]
 pywatson = "pywatson.core:cli"
-pywatson-init = "pywatson.core:create_project"
 
 # ---------------------------------------------------------------------------
 # Ruff — linter & formatter configuration

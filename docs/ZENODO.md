@@ -55,7 +55,7 @@ Keeping them separate means:
 When creating a new project, pass `--docker` to generate all Docker files:
 
 ```bash
-pywatson init my-analysis \
+pywatson --project-name my-analysis \
   --author-name "Jane Doe" \
   --author-email "jane@university.edu" \
   --description "Spin-chain Monte Carlo study" \

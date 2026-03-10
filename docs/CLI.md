@@ -3,31 +3,31 @@
 Complete reference for the `pywatson` command-line interface.
 
 ```
-pywatson [--version] [--help] COMMAND [OPTIONS] [ARGS...]
+pywatson [--version] [--help] [--project-name NAME] [OPTIONS]
+pywatson init
 ```
-
-`pywatson-init PROJECT_NAME` is a backward-compatible alias for
-`pywatson init PROJECT_NAME`.
 
 ---
 
-## `pywatson init` — scaffold a new project
+## `pywatson --project-name NAME` — scaffold a new project (non-interactive)
 
-Creates a new Python scientific project with modern tooling (uv, ruff, pytest)
-and DrWatson.jl-style utilities.
+Creates a new Python scientific project non-interactively.
+All parameters are passed as flags; if `--project-name` is omitted the help
+text is shown.
 
 ```
-pywatson init [OPTIONS] PROJECT_NAME
+pywatson --project-name NAME [OPTIONS]
 ```
 
 ### Options
 
 | Option | Default | Description |
 |--------|---------|-------------|
+| `--project-name TEXT` | — | Name of the new project (required) |
 | `--path`, `-p PATH` | `.` | Parent directory for the new project |
 | `--author-name TEXT` | `git config user.name` | Author name (auto-filled from git) |
 | `--author-email TEXT` | `git config user.email` | Author email (auto-filled from git) |
-| `--description TEXT` | _(prompted)_ | One-line project description |
+| `--description TEXT` | _(empty)_ | One-line project description |
 | `--project-type`, `-t` | `default` | `default`, `minimal`, or `full` |
 | `--license` | `MIT` | `MIT`, `BSD-3-Clause`, `Apache-2.0`, or `ISC` |
 | `--python-version TEXT` | `3.12` | Target Python version |
@@ -48,11 +48,11 @@ pywatson init [OPTIONS] PROJECT_NAME
 ### Examples
 
 ```bash
-# Minimal — prompts for missing info
-pywatson init my-analysis
+# Minimal — git config auto-fills author info
+pywatson --project-name my-analysis
 
 # All flags up front
-pywatson init my-analysis \
+pywatson --project-name my-analysis \
   --author-name "Jane Doe" \
   --author-email "jane@university.edu" \
   --description "Ising model Monte Carlo" \
@@ -61,17 +61,17 @@ pywatson init my-analysis \
   --linting strict
 
 # Import conda dependencies
-pywatson init my-analysis --env-file environment.yml
+pywatson --project-name my-analysis --env-file environment.yml
 
 # With Docker reproducibility scaffolding
-pywatson init my-analysis \
+pywatson --project-name my-analysis \
   --project-type full \
   --docker
 ```
 
 ### What gets created
 
-A `pywatson init` run creates a ready-to-use project:
+A `pywatson` run creates a ready-to-use project:
 
 ```
 my-analysis/

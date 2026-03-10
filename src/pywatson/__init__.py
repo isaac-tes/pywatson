@@ -91,10 +91,10 @@ __all__ = [
     "load_zarr",
 ]
 
-from .core import ProjectScaffolder, create_project  # noqa: F401
+from .core import ProjectScaffolder  # noqa: F401
 
-# Add core functions to __all__
-__all__.extend(["create_project", "ProjectScaffolder"])
+# Add core classes to __all__
+__all__.extend(["ProjectScaffolder"])
 
 
 def hello() -> str:

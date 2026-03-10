@@ -49,7 +49,11 @@ uv tool install git+https://github.com/isaac-tes/pywatson.git
 ### Create a project
 
 ```bash
-pywatson init my-analysis \
+# Interactive wizard
+pywatson init
+
+# Or non-interactive with flags
+pywatson --project-name my-analysis \
   --author-name "Jane Doe" --author-email "jane@uni.edu" \
   --description "My research"
 
@@ -152,7 +156,7 @@ For the complete API, see [docs/UTILITIES.md](docs/UTILITIES.md).
 ## 💻 CLI
 
 ```bash
-pywatson init PROJ_NAME          # create new project
+pywatson --project-name PROJ_NAME  # create new project
 pywatson adopt /path/to/code     # adopt existing project
 pywatson status                  # dashboard (dirs, data, git)
 pywatson sweep K=V1,V2 ...      # preview parameter-sweep names

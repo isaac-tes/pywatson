@@ -146,7 +146,7 @@ Enable WSL 2 integration when prompted.
 
 ## Files PyWatson generates
 
-Run `pywatson init my-project --docker` and you get these extra files:
+Run `pywatson --project-name my-project --docker` and you get these extra files:
 
 ### `Dockerfile`
 

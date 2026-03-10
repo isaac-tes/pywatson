@@ -3,7 +3,7 @@
 # PyWatson - Quick Project Creator
 #
 # This script provides a convenient interactive wrapper around the
-# `pywatson-init` CLI for creating PyWatson-style Python projects.
+# `pywatson` CLI for creating PyWatson-style Python projects.
 #
 # Usage:
 #   ./create-project.sh -i           # Full interactive mode
@@ -191,7 +191,8 @@ create_project_interactive() {
     fi
 
     # Build the command
-    cmd=(uv run pywatson-init "$project_name"
+    cmd=(uv run pywatson
+        --project-name "$project_name"
         --path "$project_path"
         --author-name "$author_name"
         --author-email "$author_email"
@@ -237,8 +238,8 @@ show_usage() {
     echo "  $0 -i                              # Interactive mode"
     echo "  $0 my-project                      # Quick mode (default type, MIT license)"
     echo
-    echo "For advanced usage, use pywatson-init directly:"
-    echo "  uv run pywatson-init --help"
+    echo "For advanced usage, use pywatson directly:"
+    echo "  uv run pywatson --help"
     echo
     echo "Project types:"
     echo "  default   PyWatson standard (data/{sims, exp_raw, exp_pro})"
@@ -286,7 +287,8 @@ case "${1:-}" in
             fi
         fi
 
-        cmd=(uv run pywatson-init "$project_name"
+        cmd=(uv run pywatson
+            --project-name "$project_name"
             --path "$ORIGINAL_CWD"
             --author-name "$default_author_name"
             --author-email "$default_author_email"

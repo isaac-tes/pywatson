@@ -72,17 +72,20 @@ source .venv/bin/activate && pywatson --version
 ## Creating Your First Project
 
 ```bash
-# Simplest invocation — prompts for author info and description
-pywatson init my-analysis
+# Interactive wizard (recommended for first-time use)
+pywatson init
+
+# Non-interactive — git config auto-fills author info
+pywatson --project-name my-analysis
 
 # One-liner with all info up front
-pywatson init my-analysis \
+pywatson --project-name my-analysis \
   --author-name "Jane Doe" \
   --author-email "jane@university.edu" \
   --description "Spin-chain Monte Carlo study"
 
 # Full project (adds CI, Makefile, CONTRIBUTING, CHANGELOG)
-pywatson init my-analysis \
+pywatson --project-name my-analysis \
   --project-type full \
   --license BSD-3-Clause \
   --python-version 3.12 \
@@ -92,7 +95,7 @@ pywatson init my-analysis \
   --description "Spin-chain Monte Carlo study"
 
 # Import dependencies from an existing conda environment.yml
-pywatson init my-analysis --env-file environment.yml
+pywatson --project-name my-analysis --env-file environment.yml
 ```
 
 After scaffolding, enter the project and finish setup:
@@ -101,14 +104,6 @@ After scaffolding, enter the project and finish setup:
 cd my-analysis
 uv sync          # install all dependencies into .venv
 uv run pytest    # confirm tests pass (should be 2/2 green)
-```
-
-### Legacy / backward-compatible alias
-
-`pywatson-init` is still fully supported as a drop-in alias:
-
-```bash
-pywatson-init my-analysis --author-name "Jane" --author-email "jane@uni.edu"
 ```
 
 ---
@@ -487,14 +482,17 @@ print("Plot saved.")
 ## CLI Quick Reference
 
 ```
-pywatson [OPTIONS] COMMAND [ARGS]...
+pywatson [OPTIONS]
+pywatson init
 
-Options:
-  --version  Show the version and exit.
-  --help     Show this message and exit.
+Options (for non-interactive use):
+  --project-name TEXT  Name of the new project (required for creation)
+  --version            Show the version and exit.
+  --help               Show this message and exit.
+  (+ all scaffolding flags: --author-name, --path, --project-type, ...)
 
 Commands:
-  init     Create a new Python project with modern tooling and best practices.
+  init     Create a new project interactively (wizard mode).
   status   Show an overview of the current PyWatson project.
   sweep    Print filenames for a parameter sweep.
   summary  Summarise HDF5 data files in the project data directory.

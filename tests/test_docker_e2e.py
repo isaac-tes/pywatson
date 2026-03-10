@@ -118,7 +118,7 @@ def scaffolded_project() -> Generator[Path, None, None]:
             "uv",
             "run",
             "pywatson",
-            "init",
+            "--project-name",
             project_name,
             "--author-name",
             "E2E Test",
@@ -138,7 +138,7 @@ def scaffolded_project() -> Generator[Path, None, None]:
         cwd=pywatson_root,
     )
     assert result.returncode == 0, (
-        f"pywatson init failed:\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
+        f"pywatson failed:\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
     )
 
     project_path = tmp_dir / project_name

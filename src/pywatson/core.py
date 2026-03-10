@@ -984,93 +984,42 @@ def load_environment_file(env_file: Path) -> tuple[list[str], list[str]]:
 # ==========================================================================
 
 
-@click.group()
-@click.version_option(version=__version__, prog_name="pywatson")
-def cli() -> None:
-    """PyWatson -- Python scientific project manager.
+def _prompt_menu(
+    label: str,
+    choices: list[tuple[str, str]],
+    default_value: str,
+) -> str:
+    """Display a numbered choice menu and return the selected value.
 
-    Use 'pywatson init PROJECT_NAME' to scaffold a new project.
+    Args:
+        label: Menu heading.
+        choices: List of (value, description) tuples.
+        default_value: The value pre-selected as default.
+
+    Returns:
+        The selected value string.
     """
+    console.print(f"\n[bold]{label}:[/bold]")
+    default_idx = next((i for i, (v, _) in enumerate(choices) if v == default_value), 0)
+    for i, (value, desc) in enumerate(choices, 1):
+        marker = "  [dim](default)[/dim]" if value == default_value else ""
+        console.print(f"  [cyan]{i}[/cyan]) [bold]{value}[/bold] — {desc}{marker}")
+    console.print()
+    while True:
+        raw = click.prompt(
+            f"Select [1-{len(choices)}]",
+            default=str(default_idx + 1),
+        )
+        try:
+            idx = int(str(raw)) - 1
+            if 0 <= idx < len(choices):
+                return choices[idx][0]
+        except (ValueError, IndexError):
+            pass
+        console.print(f"[red]Please enter a number between 1 and {len(choices)}.[/red]")
 
 
-@cli.command("init")
-@click.argument("project_name")
-@click.option(
-    "--path",
-    "-p",
-    type=click.Path(),
-    default=".",
-    help="Directory to create the project in.",
-)
-@click.option(
-    "--author-name",
-    prompt="Author name",
-    default=lambda: _git_config("user.name"),
-    show_default="git config user.name",
-    help="Author name.",
-)
-@click.option(
-    "--author-email",
-    prompt="Author email",
-    default=lambda: _git_config("user.email"),
-    show_default="git config user.email",
-    help="Author email.",
-)
-@click.option(
-    "--description",
-    prompt="Project description",
-    help="Short project description.",
-)
-@click.option(
-    "--project-type",
-    "-t",
-    type=click.Choice(list(PROJECT_TYPES.keys()), case_sensitive=False),
-    default="default",
-    show_default=True,
-    help="Project structure type.",
-)
-@click.option(
-    "--license",
-    "license_type",
-    type=click.Choice(list(LICENSE_TEMPLATES.keys()), case_sensitive=False),
-    default="MIT",
-    show_default=True,
-    help="License for the generated project.",
-)
-@click.option(
-    "--python-version",
-    default="3.12",
-    show_default=True,
-    help="Target Python version (e.g. 3.11, 3.12).",
-)
-@click.option(
-    "--linting",
-    "linting_mode",
-    type=click.Choice(LINTING_MODES, case_sensitive=False),
-    default="minimal",
-    show_default=True,
-    help="Ruff ruleset: minimal (E,F,W,I) or strict (adds D,N,B,SIM,RUF,UP).",
-)
-@click.option(
-    "--type-checker",
-    type=click.Choice(TYPE_CHECKERS, case_sensitive=False),
-    default="ty",
-    show_default=True,
-    help="Type checker for the generated project (ty, mypy, or none).",
-)
-@click.option(
-    "--env-file",
-    type=click.Path(exists=True),
-    help="Environment file (environment.yml) to import dependencies from.",
-)
-@click.option("--force", is_flag=True, help="Overwrite existing directory.")
-@click.option(
-    "--docker",
-    is_flag=True,
-    default=False,
-    help="Scaffold Docker + docker-compose files for Zenodo reproducibility.",
-)
-def init_project(
+def _run_scaffolder(
     project_name: str,
     path: str,
     author_name: str,
@@ -1085,14 +1034,7 @@ def init_project(
     force: bool,
     docker: bool,
 ) -> None:
-    """Create a new Python project with modern tooling and best practices.
-
-    This tool creates a complete project structure similar to DrWatson.jl
-    with uv for dependency management, comprehensive documentation,
-    example code, and tests.
-
-    PROJECT_NAME is the name for your new project (e.g. 'my-simulation').
-    """
+    """Run the full ProjectScaffolder pipeline with the given parameters."""
     console.print(f"Creating project: [bold blue]{project_name}[/bold blue]")
     console.print(f"  Type         : [cyan]{project_type}[/cyan] ({PROJECT_TYPES[project_type]})")
     console.print(f"  License      : [cyan]{license_type}[/cyan]")
@@ -1215,10 +1157,230 @@ def init_project(
         sys.exit(1)
 
 
-# Backward-compatible entry point alias for the `pywatson-init` script.
-# Allows the old entry point (`pywatson.core:create_project`) to keep working
-# while the canonical invocation is now `pywatson init PROJECT_NAME`.
-create_project = init_project
+# ==========================================================================
+# CLI entry point
+# ==========================================================================
+
+
+@click.group(invoke_without_command=True)
+@click.version_option(version=__version__, prog_name="pywatson")
+@click.option("--project-name", default=None, help="Name for the new project.")
+@click.option(
+    "--path",
+    "-p",
+    type=click.Path(),
+    default=".",
+    help="Directory to create the project in.",
+)
+@click.option(
+    "--author-name",
+    default=lambda: _git_config("user.name"),
+    show_default="git config user.name",
+    help="Author name.",
+)
+@click.option(
+    "--author-email",
+    default=lambda: _git_config("user.email"),
+    show_default="git config user.email",
+    help="Author email.",
+)
+@click.option("--description", default="", help="Short project description.")
+@click.option(
+    "--project-type",
+    "-t",
+    type=click.Choice(list(PROJECT_TYPES.keys()), case_sensitive=False),
+    default="default",
+    show_default=True,
+    help="Project structure type.",
+)
+@click.option(
+    "--license",
+    "license_type",
+    type=click.Choice(list(LICENSE_TEMPLATES.keys()), case_sensitive=False),
+    default="MIT",
+    show_default=True,
+    help="License for the generated project.",
+)
+@click.option(
+    "--python-version",
+    default="3.12",
+    show_default=True,
+    help="Target Python version (e.g. 3.11, 3.12).",
+)
+@click.option(
+    "--linting",
+    "linting_mode",
+    type=click.Choice(LINTING_MODES, case_sensitive=False),
+    default="minimal",
+    show_default=True,
+    help="Ruff ruleset: minimal (E,F,W,I) or strict (adds D,N,B,SIM,RUF,UP).",
+)
+@click.option(
+    "--type-checker",
+    type=click.Choice(TYPE_CHECKERS, case_sensitive=False),
+    default="ty",
+    show_default=True,
+    help="Type checker for the generated project (ty, mypy, or none).",
+)
+@click.option(
+    "--env-file",
+    type=click.Path(exists=True),
+    help="Environment file (environment.yml) to import dependencies from.",
+)
+@click.option("--force", is_flag=True, help="Overwrite existing directory.")
+@click.option(
+    "--docker",
+    is_flag=True,
+    default=False,
+    help="Scaffold Docker + docker-compose files for Zenodo reproducibility.",
+)
+@click.pass_context
+def cli(
+    ctx: click.Context,
+    project_name: str | None,
+    path: str,
+    author_name: str,
+    author_email: str,
+    description: str,
+    project_type: str,
+    license_type: str,
+    python_version: str,
+    linting_mode: str,
+    type_checker: str,
+    env_file: str | None,
+    force: bool,
+    docker: bool,
+) -> None:
+    """PyWatson -- Python scientific project manager.
+
+    \b
+    Non-interactive (all flags):
+      pywatson --project-name NAME [--author-name ...] [--flags]
+
+    \b
+    Interactive wizard:
+      pywatson init
+    """
+    if ctx.invoked_subcommand is not None:
+        return
+    if project_name is None:
+        click.echo(ctx.get_help())
+        return
+    _run_scaffolder(
+        project_name=project_name,
+        path=path,
+        author_name=author_name,
+        author_email=author_email,
+        description=description,
+        project_type=project_type,
+        license_type=license_type,
+        python_version=python_version,
+        linting_mode=linting_mode,
+        type_checker=type_checker,
+        env_file=env_file,
+        force=force,
+        docker=docker,
+    )
+
+
+@cli.command("init")
+def init_project() -> None:
+    """Create a new project interactively (wizard mode).
+
+    Prompts for all settings, then scaffolds the project.
+    For non-interactive use pass flags directly to pywatson:
+
+        pywatson --project-name NAME [--flags]
+    """
+    console.print("\n[bold cyan]PyWatson — Interactive Project Creator[/bold cyan]")
+    console.print("[dim]Press Enter to accept the default shown in brackets.[/dim]\n")
+
+    project_name = click.prompt("Project name")
+    if not project_name.strip():
+        console.print("[red]Project name cannot be empty.[/red]")
+        sys.exit(1)
+
+    author_name = click.prompt("Author name", default=_git_config("user.name"))
+    author_email = click.prompt("Author email", default=_git_config("user.email"))
+    description = click.prompt(
+        "Project description", default="A scientific computing project"
+    )
+    path = click.prompt("Project path", default=".")
+
+    project_type = _prompt_menu(
+        "Project type",
+        list(PROJECT_TYPES.items()),
+        "default",
+    )
+    license_type = _prompt_menu(
+        "License",
+        [
+            ("MIT", "Permissive (most common)"),
+            ("BSD-3-Clause", "Permissive"),
+            ("Apache-2.0", "Permissive + patent grant"),
+            ("ISC", "Simplified permissive"),
+        ],
+        "MIT",
+    )
+    python_version = click.prompt("Target Python version", default="3.12")
+    linting_mode = _prompt_menu(
+        "Linting mode",
+        [
+            ("minimal", "Essential checks only (E, F, W, I)"),
+            ("strict", "Full ruleset (adds D, N, B, SIM, RUF, UP)"),
+        ],
+        "minimal",
+    )
+    type_checker = _prompt_menu(
+        "Type checker",
+        [
+            ("ty", "Astral ty (fast, modern)"),
+            ("mypy", "mypy (mature, widely used)"),
+            ("none", "No type checker"),
+        ],
+        "ty",
+    )
+    env_file_input = click.prompt("Environment file (.yml, optional)", default="")
+    env_file: str | None = None
+    if env_file_input:
+        if Path(env_file_input).exists():
+            env_file = env_file_input
+        else:
+            console.print(
+                f"[yellow]Warning: {env_file_input} not found, ignoring.[/yellow]"
+            )
+    docker = click.confirm("Include Docker files?", default=False)
+
+    console.print("\n[bold]Summary:[/bold]")
+    console.print(f"  Name      : [cyan]{project_name}[/cyan]")
+    console.print(f"  Author    : [cyan]{author_name} <{author_email}>[/cyan]")
+    console.print(f"  Desc      : [dim]{description}[/dim]")
+    console.print(f"  Type      : [cyan]{project_type}[/cyan]")
+    console.print(f"  License   : [cyan]{license_type}[/cyan]")
+    console.print(f"  Python    : [cyan]{python_version}[/cyan]")
+    console.print(f"  Linting   : [cyan]{linting_mode}[/cyan]")
+    console.print(f"  Checker   : [cyan]{type_checker}[/cyan]")
+    console.print(f"  Path      : [dim]{path}[/dim]")
+    console.print()
+    if not click.confirm("Continue?", default=True):
+        console.print("[bold red]Aborted.[/bold red]")
+        return
+
+    _run_scaffolder(
+        project_name=project_name,
+        path=path,
+        author_name=author_name,
+        author_email=author_email,
+        description=description,
+        project_type=project_type,
+        license_type=license_type,
+        python_version=python_version,
+        linting_mode=linting_mode,
+        type_checker=type_checker,
+        env_file=env_file,
+        force=False,
+        docker=docker,
+    )
 
 
 # ==========================================================================
@@ -1243,7 +1405,7 @@ def status_command() -> None:
 
     if root is None:
         console.print("[bold red]Not inside a PyWatson project.[/bold red]")
-        console.print("Hint: run 'pywatson init PROJECT_NAME' to create one.")
+        console.print("Hint: run 'pywatson init' for the interactive wizard.")
         return
 
     console.print(f"[bold green]PyWatson project[/bold green]: {root}")

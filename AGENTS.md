@@ -12,7 +12,7 @@ management, HDF5 data handling, parameter-based filenames, and smart caching.
 - **Package manager**: [uv](https://docs.astral.sh/uv/) (not pip, not conda)
 - **Build backend**: `uv_build`
 - **Layout**: `src/` layout — the package lives at `src/pywatson/`
-- **Entry point**: `pywatson-init` CLI → `pywatson.core:create_project`
+- **Entry point**: `pywatson` CLI → `pywatson.core:cli`
 
 ## Build / Lint / Test Commands
 
@@ -60,8 +60,8 @@ uv run mkdocs build --strict      # verify docs are clean
 uv run mkdocs gh-deploy --strict --force --clean  # deploy to GitHub Pages
 
 # Run the CLI
-uv run pywatson-init --help
-uv run pywatson-init PROJECT_NAME --author-name "Name" --author-email "e@x.com" --description "desc"
+uv run pywatson --help
+uv run pywatson --project-name PROJECT_NAME --author-name "Name" --author-email "e@x.com" --description "desc"
 ```
 
 ## Project Layout

@@ -241,19 +241,124 @@ class TestSummaryCommand:
 
 
 class TestInitGitAutoFill:
-    """Tests that `pywatson init` offers git config values as defaults."""
+    """Tests that `pywatson` exposes git config values as option defaults."""
 
-    def test_init_has_author_name_option(self) -> None:
-        """The init command accepts --author-name without error."""
+    def test_has_author_name_option(self) -> None:
+        """The pywatson command accepts --author-name without error."""
         runner = CliRunner()
         result = runner.invoke(
             cli,
-            ["init", "--help"],
+            ["--help"],
         )
         assert "--author-name" in result.output
 
-    def test_init_has_author_email_option(self) -> None:
-        """The init command accepts --author-email without error."""
+    def test_has_author_email_option(self) -> None:
+        """The pywatson command accepts --author-email without error."""
         runner = CliRunner()
-        result = runner.invoke(cli, ["init", "--help"])
+        result = runner.invoke(cli, ["--help"])
         assert "--author-email" in result.output
+
+
+# ===========================================================================
+# pywatson init — interactive wizard (no args)
+# ===========================================================================
+
+
+class TestInitInteractive:
+    """Tests for fully interactive `pywatson init` (no arguments)."""
+
+    def _interactive_input(
+        self,
+        project_name: str = "my-sim",
+        author_name: str = "Alice",
+        author_email: str = "alice@example.com",
+        description: str = "A test project",
+        path: str = ".",
+        project_type_idx: str = "1",
+        license_idx: str = "1",
+        python_version: str = "3.12",
+        linting_idx: str = "1",
+        type_checker_idx: str = "3",
+        env_file: str = "",
+        docker: str = "n",
+        confirm: str = "n",
+    ) -> str:
+        """Build a newline-delimited input string for the interactive wizard."""
+        return "\n".join(
+            [
+                project_name,
+                author_name,
+                author_email,
+                description,
+                path,
+                project_type_idx,
+                license_idx,
+                python_version,
+                linting_idx,
+                type_checker_idx,
+                env_file,
+                docker,
+                confirm,
+                "",
+            ]
+        )
+
+    def test_interactive_aborted_does_not_create_project(self, tmp_path: Path) -> None:
+        """Answering 'n' at the confirmation prompt aborts without creating files."""
+        runner = CliRunner()
+        inp = self._interactive_input(path=str(tmp_path), confirm="n")
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            result = runner.invoke(cli, ["init"], input=inp)
+        assert result.exit_code == 0
+        assert "Aborted" in result.output
+        assert not (tmp_path / "my-sim").exists()
+
+    def test_interactive_shows_summary_before_confirm(self, tmp_path: Path) -> None:
+        """The summary block is printed before the Continue? prompt."""
+        runner = CliRunner()
+        inp = self._interactive_input(path=str(tmp_path), confirm="n")
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            result = runner.invoke(cli, ["init"], input=inp)
+        assert "Summary" in result.output
+        assert "my-sim" in result.output
+
+    def test_interactive_empty_project_name_exits(self, tmp_path: Path) -> None:
+        """An empty project name causes a non-zero exit."""
+        runner = CliRunner()
+        # Send blank name then fill everything else
+        fields = [
+            "", "Alice", "a@b.com", "desc", ".", "1", "1", "3.12", "1", "3", "", "n", "n", "",
+        ]
+        inp = "\n".join(fields)
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            result = runner.invoke(cli, ["init"], input=inp)
+        assert result.exit_code != 0 or "cannot be empty" in result.output
+
+    def test_init_no_args_triggers_interactive(self, tmp_path: Path) -> None:
+        """Running `pywatson init` without PROJECT_NAME prints the wizard header."""
+        runner = CliRunner()
+        inp = self._interactive_input(path=str(tmp_path), confirm="n")
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            result = runner.invoke(cli, ["init"], input=inp)
+        assert "Interactive Project Creator" in result.output
+
+    def test_noninteractive_bypasses_wizard(self, tmp_path: Path) -> None:
+        """Using --project-name bypasses the interactive wizard entirely."""
+        runner = CliRunner()
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            result = runner.invoke(
+                cli,
+                [
+                    "--project-name",
+                    "quick-proj",
+                    "--path",
+                    str(tmp_path),
+                    "--author-name",
+                    "Bob",
+                    "--author-email",
+                    "bob@example.com",
+                    "--description",
+                    "Quick",
+                ],
+            )
+        assert "Interactive Project Creator" not in result.output
