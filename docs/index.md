@@ -1,6 +1,6 @@
 # 🔬 PyWatson
 
-**A Python scientific project management tool inspired by [DrWatson.jl](https://juliadynamics.github.io/DrWatson.jl/stable/)**
+**A Python scientific project management tool inspired by [DrWatson.jl](https://github.com/JuliaDynamics/DrWatson.jl)**
 
 [![CI](https://github.com/isaac-tes/pywatson/actions/workflows/ci.yml/badge.svg)](https://github.com/isaac-tes/pywatson/actions/workflows/ci.yml)
 [![Docs](https://github.com/isaac-tes/pywatson/actions/workflows/docs.yml/badge.svg)](https://isaac-tes.github.io/pywatson/)

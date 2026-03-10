@@ -1,5 +1,5 @@
 """
-PyWatson - A Python scientific project management tool inspired by DrWatson.jl
+PyWatson - A Python scientific project management tool.
 
 This tool creates a complete Python project structure with modern tooling (uv),
 comprehensive documentation, example code, and tests.
@@ -913,7 +913,7 @@ def load_environment_file(env_file: Path) -> tuple[list[str], list[str]]:
 @click.group()
 @click.version_option(version=__version__, prog_name="pywatson")
 def cli() -> None:
-    """PyWatson -- Python scientific project manager inspired by DrWatson.jl.
+    """PyWatson -- Python scientific project manager.
 
     Use 'pywatson init PROJECT_NAME' to scaffold a new project.
     """

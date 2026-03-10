@@ -1,7 +1,7 @@
 # 🔬 PyWatson
 
 A Python scientific project management tool inspired by
-[DrWatson.jl](https://juliadynamics.github.io/DrWatson.jl/stable/).
+[DrWatson.jl](https://github.com/JuliaDynamics/DrWatson.jl).
 Scaffolds reproducible scientific projects with modern Python tooling
 ([uv](https://docs.astral.sh/uv/) + pytest + ruff) and DrWatson-style
 path management, HDF5 data handling, and smart caching.
@@ -206,7 +206,7 @@ MIT — see [LICENSE](LICENSE).
 
 ## 🙏 Built with
 
-- [DrWatson.jl](https://juliadynamics.github.io/DrWatson.jl/stable/) (inspiration)
+- [DrWatson.jl](https://github.com/JuliaDynamics/DrWatson.jl) (inspiration)
 - [uv](https://docs.astral.sh/uv/) (package management)
 - [Click](https://click.palletsprojects.com/) (CLI)
 - [Rich](https://rich.readthedocs.io/) (terminal UI)

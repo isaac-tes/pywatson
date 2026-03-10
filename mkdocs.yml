@@ -2,7 +2,7 @@ site_name: PyWatson
 site_url: https://isaac-tes.github.io/pywatson/
 site_author: Isaac Tesfaye
 site_description: >-
-  A Python scientific project management tool inspired by DrWatson.jl —
+  A Python scientific project management tool —
   scaffold reproducible research projects with modern Python tooling.
 
 repo_name: isaac-tes/pywatson

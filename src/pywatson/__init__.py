@@ -1,5 +1,5 @@
 """
-PyWatson - A Python scientific project management tool inspired by DrWatson.jl
+PyWatson - A Python scientific project management tool
 
 This tool creates a complete Python project structure with modern tooling (uv),
 comprehensive documentation, example code, and tests.
