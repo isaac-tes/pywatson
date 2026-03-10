@@ -1,0 +1,97 @@
+/* Custom styling for FOQS documentation */
+
+/* :root {
+  --md-primary-fg-color: #3f51b5;
+  --md-primary-fg-color--light: #5c6bc0;
+  --md-primary-fg-color--dark: #303f9f;
+  --md-accent-fg-color: #673ab7;
+} */
+
+/* Grid cards styling */
+/* .md-typeset .grid.cards>ol>li,
+.md-typeset .grid.cards>ul>li {
+  border-radius: 0.2rem;
+  transition: all 0.25s;
+} */
+
+/* .md-typeset .grid.cards>ol>li:hover,
+.md-typeset .grid.cards>ul>li:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+} */
+
+/* Code block improvements */
+/* .md-typeset code {
+  border-radius: 0.2rem;
+} */
+
+/* Admonition styling */
+/* .md-typeset .admonition {
+  border-left: 0.2rem solid;
+} */
+
+/* API documentation styling */
+/* .doc-contents {
+  margin-top: 1rem;
+} */
+
+.doc-heading {
+  font-weight: 600;
+}
+
+/* Table improvements */
+/* .md-typeset table:not([class]) {
+  border-radius: 0.2rem;
+  overflow: hidden;
+} */
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Make header title clickable */
+
+/* .md-header__title {
+  cursor: pointer;
+}
+
+.md-header__title:hover {
+  opacity: 0.8;
+} */
+
+/* docs/stylesheets/extra.css */
+
+/* Hide dark mode image by default (light mode) */
+[data-md-color-scheme="default"] .dark-mode-image {
+  display: none;
+}
+
+/* Hide light mode image in dark mode */
+[data-md-color-scheme="slate"] .light-mode-image {
+  display: none;
+}
+
+/* Optional: Add smooth transition */
+.theme-image {
+  transition: opacity 0.2s ease-in-out;
+}
+
+[data-md-toggle="search"]:not(:checked) ~ .md-header .md-search__form::after {
+  position: absolute;
+  top: .3rem;
+  right: .3rem;
+  display: block;
+  padding: .1rem .4rem;
+  color: var(--md-default-bg-color);
+  font-weight: bold;
+  font-size: .8rem;
+  border: .05rem solid var(--md-default-bg-color--lighter);
+  border-radius: .1rem;
+  content: "/";
+}
+
+/* Hide Python console prompts (>>>) in code blocks */
+.highlight .gp {
+    display: none;
+}
