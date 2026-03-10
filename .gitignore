@@ -96,9 +96,9 @@ notebooks/
 results/
 
 # AI-related files
-AGENTS.md
+# AGENTS.md
 # Ignore AI/Copilot instructions specifically (not the whole .github/ dir)
-.github/copilot-instructions.md
+# .github/copilot-instructions.md
 
 # specstory files
 .specstory/
