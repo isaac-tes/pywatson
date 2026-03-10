@@ -19,6 +19,7 @@ from pywatson.core import (
     _REGENERATED_FILES,
     CATEGORY_DEFAULT_DIRS,
     CATEGORY_DESCRIPTIONS,
+    ProjectScaffolder,
     ProjectScanner,
     cli,
 )
@@ -839,3 +840,155 @@ class TestAdoptCommand:
 
     def test_regenerated_files_includes_pyproject_toml(self) -> None:
         assert "pyproject.toml" in _REGENERATED_FILES
+
+
+# ===========================================================================
+# Init → Adopt roundtrip tests
+# ===========================================================================
+
+
+class TestInitAdoptRoundtrip:
+    """Verify that `pywatson adopt` correctly re-structures projects generated
+    by `pywatson init` for all three project types (minimal, default, full).
+
+    Each test scaffolds a project with ProjectScaffolder (no uv/network),
+    then runs `pywatson adopt --auto --no-uv` on it and asserts that the
+    adopted project has the expected structure.
+    """
+
+    @pytest.fixture
+    def runner(self) -> CliRunner:
+        return CliRunner()
+
+    def _scaffold(
+        self,
+        base: Path,
+        project_name: str,
+        project_type: str,
+    ) -> Path:
+        """Scaffold a pywatson project without running uv and return its root."""
+        project_path = base / project_name
+        s = ProjectScaffolder(
+            project_name,
+            project_path,
+            project_type=project_type,
+            license_type="MIT",
+            python_version="3.12",
+        )
+        s.create_project_structure()
+        s.create_source_files("Test Author", "test@example.com")
+        s.create_test_files()
+        s.create_example_script()
+        s.create_readme("Test Author", "test@example.com", [], "Roundtrip test.")
+        s.create_gitignore()
+        s.create_license("Test Author")
+        s.create_example_notebook()  # no-op for minimal
+        if project_type == "full":
+            s.create_full_extras("Test Author", "test@example.com")
+        return project_path
+
+    # ------------------------------------------------------------------
+    # Exit zero for all types
+    # ------------------------------------------------------------------
+
+    @pytest.mark.parametrize("project_type", ["minimal", "default", "full"])
+    def test_roundtrip_exits_zero(
+        self, runner: CliRunner, tmp_path: Path, project_type: str
+    ) -> None:
+        src = self._scaffold(tmp_path, "my_proj", project_type)
+        result = _adopt(runner, src, tmp_path)
+        assert result.exit_code == 0, result.output
+
+    # ------------------------------------------------------------------
+    # Source files stay in src/<pkg>/
+    # ------------------------------------------------------------------
+
+    @pytest.mark.parametrize("project_type", ["minimal", "default", "full"])
+    def test_roundtrip_source_files_in_src(
+        self, runner: CliRunner, tmp_path: Path, project_type: str
+    ) -> None:
+        src = self._scaffold(tmp_path, "my_proj", project_type)
+        _adopt(runner, src, tmp_path)
+        dest = _dest(tmp_path, "my_proj")
+        assert (dest / "src" / "my_proj" / "__init__.py").exists()
+        assert (dest / "src" / "my_proj" / "core.py").exists()
+        assert (dest / "src" / "my_proj" / "pywatson_utils.py").exists()
+
+    @pytest.mark.parametrize("project_type", ["minimal", "default", "full"])
+    def test_roundtrip_py_typed_in_src(
+        self, runner: CliRunner, tmp_path: Path, project_type: str
+    ) -> None:
+        """Regression: py.typed must land in src/<pkg>/, not _research/."""
+        src = self._scaffold(tmp_path, "my_proj", project_type)
+        _adopt(runner, src, tmp_path)
+        dest = _dest(tmp_path, "my_proj")
+        assert (dest / "src" / "my_proj" / "py.typed").exists()
+        assert not (dest / "_research" / "py.typed").exists()
+
+    # ------------------------------------------------------------------
+    # Test files stay in tests/
+    # ------------------------------------------------------------------
+
+    @pytest.mark.parametrize("project_type", ["minimal", "default", "full"])
+    def test_roundtrip_test_files_in_tests(
+        self, runner: CliRunner, tmp_path: Path, project_type: str
+    ) -> None:
+        src = self._scaffold(tmp_path, "my_proj", project_type)
+        _adopt(runner, src, tmp_path)
+        dest = _dest(tmp_path, "my_proj")
+        assert (dest / "tests" / "test_core.py").exists()
+
+    # ------------------------------------------------------------------
+    # Scripts stay in scripts/
+    # ------------------------------------------------------------------
+
+    @pytest.mark.parametrize("project_type", ["minimal", "default", "full"])
+    def test_roundtrip_scripts_in_scripts(
+        self, runner: CliRunner, tmp_path: Path, project_type: str
+    ) -> None:
+        src = self._scaffold(tmp_path, "my_proj", project_type)
+        _adopt(runner, src, tmp_path)
+        dest = _dest(tmp_path, "my_proj")
+        assert (dest / "scripts" / "generate_data.py").exists()
+        assert (dest / "scripts" / "analyze_data.py").exists()
+        assert (dest / "scripts" / "pywatson_showcase.py").exists()
+
+    # ------------------------------------------------------------------
+    # README and LICENSE stay at project root
+    # ------------------------------------------------------------------
+
+    @pytest.mark.parametrize("project_type", ["minimal", "default", "full"])
+    def test_roundtrip_readme_and_license_at_root(
+        self, runner: CliRunner, tmp_path: Path, project_type: str
+    ) -> None:
+        src = self._scaffold(tmp_path, "my_proj", project_type)
+        _adopt(runner, src, tmp_path)
+        dest = _dest(tmp_path, "my_proj")
+        assert (dest / "README.md").exists()
+        assert (dest / "LICENSE").exists()
+
+    # ------------------------------------------------------------------
+    # Notebooks stay in notebooks/ (default and full only)
+    # ------------------------------------------------------------------
+
+    @pytest.mark.parametrize("project_type", ["default", "full"])
+    def test_roundtrip_notebook_in_notebooks(
+        self, runner: CliRunner, tmp_path: Path, project_type: str
+    ) -> None:
+        src = self._scaffold(tmp_path, "my_proj", project_type)
+        _adopt(runner, src, tmp_path)
+        dest = _dest(tmp_path, "my_proj")
+        assert (dest / "notebooks" / "my_proj_example.ipynb").exists()
+
+    # ------------------------------------------------------------------
+    # Full-type extras: CHANGELOG and CONTRIBUTING go to docs/
+    # ------------------------------------------------------------------
+
+    def test_roundtrip_full_extras_in_docs(
+        self, runner: CliRunner, tmp_path: Path
+    ) -> None:
+        src = self._scaffold(tmp_path, "my_proj", "full")
+        _adopt(runner, src, tmp_path)
+        dest = _dest(tmp_path, "my_proj")
+        assert (dest / "docs" / "CHANGELOG.md").exists()
+        assert (dest / "docs" / "CONTRIBUTING.md").exists()

@@ -405,6 +405,9 @@ class ProjectScaffolder:
         core_content = self._render_template("core.py.jinja2", **context)
         (self.project_path / "src" / self.package_name / "core.py").write_text(core_content)
 
+        # py.typed — PEP 561 typed-package marker
+        (self.project_path / "src" / self.package_name / "py.typed").touch()
+
         # pywatson_utils.py — copied verbatim (not templated)
         self._copy_utils_file()
 
@@ -843,6 +846,8 @@ class ProjectScanner:
             ".python-version",
         }:
             return "config"
+        if name == "py.typed":
+            return "source"
         if ext == ".py":
             return self._classify_python_file(path)
         if ext in {".sh", ".bash", ".bat", ".ps1"}:
@@ -1811,10 +1816,14 @@ def adopt_command(
     if not tests_init.exists():
         tests_init.write_text("# Tests package\n")
 
-    # Generate README only if source has no README (docs category gets copied next)
+    # Generate README only if source has no README.
+    # README is now classified as 'config' (→ root), but legacy projects may
+    # have placed it in 'docs'. Check both so we never double-generate.
+    _readme_names = {"readme.md", "readme.rst", "readme.txt"}
     has_source_readme = any(
-        f.name.lower() in {"readme.md", "readme.rst", "readme.txt"}
-        for f in classified.get("docs", [])
+        f.name.lower() in _readme_names
+        for cat in ("config", "docs")
+        for f in classified.get(cat, [])
     )
     if not has_source_readme:
         scaffolder.create_readme(author_name, author_email, [], description)
