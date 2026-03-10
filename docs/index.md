@@ -202,7 +202,7 @@ uv build                         # package
 
 ## 📄 License
 
-MIT — see [LICENSE](LICENSE).
+MIT — see [LICENSE](https://github.com/isaac-tes/pywatson/blob/main/LICENSE).
 
 ## 🙏 Built with
 

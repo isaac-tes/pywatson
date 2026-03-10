@@ -54,6 +54,11 @@ uv run mypy src/pywatson/
 # Build distribution
 uv build
 
+# Docs — always sync README first, then build with --strict
+python scripts/generate_readme.py
+uv run mkdocs build --strict      # verify docs are clean
+uv run mkdocs gh-deploy --strict --force --clean  # deploy to GitHub Pages
+
 # Run the CLI
 uv run pywatson-init --help
 uv run pywatson-init PROJECT_NAME --author-name "Name" --author-email "e@x.com" --description "desc"
