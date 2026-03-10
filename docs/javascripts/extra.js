@@ -15,15 +15,4 @@ document$.subscribe(function() {
     logo.classList.add('clickable-added');
   }
 
-  // Make header title clickable to navigate to home page
-  var headerTitle = document.querySelector('.md-header__title');
-  if (headerTitle && !headerTitle.classList.contains('clickable-added')) {
-    headerTitle.style.cursor = 'pointer';
-    headerTitle.addEventListener('click', function(e) {
-      if (e.target.tagName !== 'A') {
-        window.location.href = homeUrl;
-      }
-    });
-    headerTitle.classList.add('clickable-added');
-  }
 });
