@@ -129,7 +129,7 @@ class TestProjectScaffolder:
     # ------------------------------------------------------------------
 
     def test_create_project_structure_default(self, temp_project_dir):
-        """Test default project type creates DrWatson.jl-style directories."""
+        """Test default project type creates PyWatson directories."""
         project_path = temp_project_dir / "default_project"
         project_path.mkdir()
         scaffolder = ProjectScaffolder("default-project", project_path, project_type="default")
@@ -305,7 +305,7 @@ class TestProjectScaffolder:
     # ------------------------------------------------------------------
 
     def test_create_gitignore(self, scaffolder):
-        """Test that .gitignore is created with DrWatson-style entries."""
+        """Test that .gitignore is created with PyWatson entries."""
         scaffolder.create_gitignore()
 
         gitignore_path = scaffolder.project_path / ".gitignore"
@@ -316,7 +316,7 @@ class TestProjectScaffolder:
         assert ".venv/" in content
         assert ".pytest_cache/" in content
         assert "data/" in content
-        # DrWatson-specific entries
+        # PyWatson-specific entries
         assert "_research/tmp/" in content
         assert "papers/" in content or "papers/*.aux" in content
 

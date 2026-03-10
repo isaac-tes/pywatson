@@ -22,7 +22,7 @@ from .utils import (
     load_zarr,
     notebookfile,
     notebooksdir,
-    # DrWatson primitives
+    # PyWatson primitives
     parse_savename,
     plotfile,
     plotsdir,
@@ -76,7 +76,7 @@ __all__ = [
     "tagsave",
     "produce_or_load",
     "collect_results",
-    # DrWatson primitives
+    # PyWatson primitives
     "parse_savename",
     "dict_list",
     # Reproducibility

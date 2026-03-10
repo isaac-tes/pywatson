@@ -10,8 +10,8 @@
 A Python scientific project management tool inspired by
 [DrWatson.jl](https://github.com/JuliaDynamics/DrWatson.jl).
 Scaffolds reproducible scientific projects with modern Python tooling
-([uv](https://docs.astral.sh/uv/) + pytest + ruff) and DrWatson-style
-path management, HDF5 data handling, and smart caching.
+([uv](https://docs.astral.sh/uv/) + pytest + ruff) and PyWatson path
+management, HDF5 data handling, and smart caching.
 
 ## ✨ Features
 
@@ -101,9 +101,9 @@ For complete docs: [uv documentation](https://docs.astral.sh/uv/)
 ```
 my-project/
 ├── src/my_project/
-│   ├── __init__.py         # Public API (DrWatson helpers re-exported)
+│   ├── __init__.py         # Public API (PyWatson helpers re-exported)
 │   ├── core.py             # Your analysis code
-│   └── pywatson_utils.py   # Self-contained DrWatson utilities
+│   └── pywatson_utils.py   # Self-contained PyWatson utilities
 ├── scripts/
 │   ├── generate_data.py
 │   └── analyze_data.py
@@ -191,7 +191,7 @@ uv build                         # package
 | Component | Description |
 |-----------|-------------|
 | `src/pywatson/core.py` | `ProjectScaffolder` + Click CLI |
-| `src/pywatson/utils.py` | DrWatson utilities (copied into generated projects) |
+| `src/pywatson/utils.py` | PyWatson utilities (copied into generated projects) |
 | `src/pywatson/templates/` | Jinja2 templates for generated project files |
 | `tests/` | pytest suite (220+ tests) |
 

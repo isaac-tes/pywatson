@@ -6,7 +6,7 @@ pywatson structure, while preserving your code unchanged.
 ## When to use
 
 - ✅ You have messy, unstructured code with files scattered around
-- ✅ You want DrWatson-style organization without rewriting
+- ✅ You want PyWatson-style organization without rewriting
 - ✅ You want to migrate an existing project to pywatson standards
 - ❌ You don't need it for brand-new projects (use `pywatson init`)
 
@@ -250,4 +250,4 @@ git commit -m "adopted: reorganized into pywatson structure"
 
 - [QUICKSTART.md](QUICKSTART.md) — Using pywatson after adoption
 - [CLI.md](CLI.md) — Full `pywatson adopt` reference
-- [UTILITIES.md](UTILITIES.md) — DrWatson API in adopted projects
+- [UTILITIES.md](UTILITIES.md) — PyWatson API in adopted projects

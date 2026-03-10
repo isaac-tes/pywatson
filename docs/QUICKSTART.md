@@ -14,7 +14,7 @@ working reproducible scientific Python project in minutes.
 2. [Creating Your First Project](#creating-your-first-project)
 3. [Project Types](#project-types)
 4. [Generated Project Structure](#generated-project-structure)
-5. [Using the DrWatson Utilities](#using-the-drwatson-utilities)
+5. [Using the PyWatson Utilities](#using-the-pywatson-utilities)
    - [Path Management](#path-management)
    - [Parameter-Based Filenames](#parameter-based-filenames)
    - [Parameter Grid Expansion](#parameter-grid-expansion)
@@ -123,7 +123,7 @@ uv run pytest    # confirm tests pass (should be 2/2 green)
 ```
 my-analysis/
 ├── src/my_analysis/
-│   ├── __init__.py         # Public API — re-exports DrWatson utilities
+│   ├── __init__.py         # Public API — re-exports PyWatson utilities
 │   └── core.py             # Your project-specific analysis functions
 ├── scripts/
 │   ├── generate_data.py    # Example data generation script
@@ -140,7 +140,7 @@ my-analysis/
 ├── _research/              # WIP scripts & scratch work (not committed by default)
 │   └── tmp/                # Temporary files (git-ignored)
 ├── docs/                   # Documentation
-├── pywatson_utils.py       # Copied DrWatson utilities (editable in-project)
+├── pywatson_utils.py       # Copied PyWatson utilities (editable in-project)
 ├── pyproject.toml
 ├── ruff.toml
 ├── LICENSE
@@ -153,9 +153,9 @@ my-analysis/
 
 ---
 
-## Using the DrWatson Utilities
+## Using the PyWatson Utilities
 
-All generated projects expose the DrWatson utilities through the package
+All generated projects expose the PyWatson utilities through the package
 `__init__.py`. Import them as:
 
 ```python

@@ -52,7 +52,7 @@ except ImportError:
 _PROJECT_ROOT = None
 
 
-# Core path and data management functionality for DrWatson-style projects
+# Core path and data management functionality for PyWatson projects
 
 
 def find_project_root(start_path: str | Path | None = None) -> Path | None:
@@ -791,7 +791,7 @@ def collect_results(
 
 
 # ---------------------------------------------------------------------------
-# DrWatson primitives: parse_savename, dict_list
+# PyWatson primitives: parse_savename, dict_list
 # ---------------------------------------------------------------------------
 
 

@@ -100,7 +100,7 @@ class TestTemplateRendering:
         assert "analyze_data" in content
 
     def test_gitignore_template_renders(self, jinja_env):
-        """Test that gitignore template renders with DrWatson-style entries."""
+        """Test that gitignore template renders with PyWatson-style entries."""
         template = jinja_env.get_template("gitignore.jinja2")
         content = template.render()
 
@@ -108,7 +108,7 @@ class TestTemplateRendering:
         assert ".venv/" in content
         assert ".pytest_cache/" in content
         assert "data/" in content
-        # DrWatson-specific entries
+        # PyWatson-specific entries
         assert "_research/tmp/" in content
         assert "papers/" in content or "papers/*.aux" in content
 
@@ -373,4 +373,4 @@ class TestTemplateRendering:
         cells_source = "".join(str(cell.get("source", "")) for cell in notebook_data["cells"])
         assert "test_project" in cells_source
         assert "Test Project" in cells_source
-        assert "DrWatson" in cells_source
+        assert "PyWatson" in cells_source

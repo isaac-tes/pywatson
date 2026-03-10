@@ -5,7 +5,7 @@
 PyWatson is a Python scientific project management tool inspired by
 [DrWatson.jl](https://juliadynamics.github.io/DrWatson.jl/stable/).
 It scaffolds reproducible scientific computing projects with modern Python
-tooling (uv, pytest, ruff) and provides DrWatson-style utilities for path
+tooling (uv, pytest, ruff) and provides PyWatson utilities for path
 management, HDF5 data handling, parameter-based filenames, and smart caching.
 
 - **Language**: Python 3.12+
