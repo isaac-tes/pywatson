@@ -14,7 +14,7 @@ The workflow relies on:
 ## Table of Contents
 
 1. [Overview](#overview)
-2. [One-Time Setup: Scaffold with `--docker`](#one-time-setup-scaffold-with---docker)
+2. [One-Time Setup: Scaffold with --docker](#one-time-setup-scaffold-with-docker)
 3. [Deposit Data on Zenodo](#deposit-data-on-zenodo)
 4. [Publish the Docker Image](#publish-the-docker-image)
 5. [Reader Reproduction Steps](#reader-reproduction-steps)

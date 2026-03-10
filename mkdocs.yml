@@ -1,0 +1,137 @@
+site_name: PyWatson
+site_url: https://isaac-tes.github.io/pywatson/
+site_author: Isaac Tesfaye
+site_description: >-
+  A Python scientific project management tool inspired by DrWatson.jl —
+  scaffold reproducible research projects with modern Python tooling.
+
+repo_name: isaac-tes/pywatson
+repo_url: https://github.com/isaac-tes/pywatson
+edit_uri: edit/main/docs/
+
+docs_dir: docs
+site_dir: site
+
+theme:
+  name: material
+  language: en
+  font:
+    text: Inter
+    code: JetBrains Mono
+  favicon: assets/favicon.ico
+  logo: assets/logo.png
+  icon:
+    repo: fontawesome/brands/github
+  palette:
+    - scheme: default
+      primary: deep purple
+      accent: teal
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - scheme: slate
+      primary: deep purple
+      accent: teal
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.instant.prefetch
+    - navigation.tracking
+    - navigation.sections
+    - navigation.path
+    - navigation.indexes
+    - navigation.top
+    - navigation.footer
+    - search.suggest
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.code.annotate
+    - content.tooltips
+    - toc.follow
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - toc:
+      permalink: true
+
+plugins:
+  - search:
+      lang: en
+  - git-revision-date-localized:
+      enable_creation_date: true
+      type: timeago
+      fallback_to_build_date: true
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          options:
+            docstring_style: google
+            docstring_section_style: table
+            show_signature: true
+            show_signature_annotations: true
+            separate_signature: true
+            line_length: 99
+            show_source: true
+            show_root_heading: true
+            show_root_toc_entry: true
+            show_category_heading: true
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            members_order: alphabetical
+            group_by_category: true
+            show_bases: true
+            filters:
+              - "!^_"
+              - "^__init__$"
+            heading_level: 2
+            show_if_no_docstring: false
+            annotations_path: brief
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/isaac-tes/pywatson
+      name: GitHub
+    - icon: fontawesome/solid/envelope
+      link: mailto:i.tesfaye@tu-berlin.de
+      name: Contact
+
+nav:
+  - Home: index.md
+  - Getting Started: QUICKSTART.md
+  - User Guide:
+      - Adopt Existing Projects: ADOPT_GUIDE.md
+      - CLI Reference: CLI.md
+      - Utilities Reference: UTILITIES.md
+  - Resources:
+      - Docker Guide: DOCKER_GUIDE.md
+      - Zenodo & Citation: ZENODO.md
+  - API Reference:
+      - Overview: api/index.md
+      - Core (Scaffolder & CLI): api/core.md
+      - Utilities: api/utils.md

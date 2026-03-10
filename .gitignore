@@ -97,8 +97,8 @@ results/
 
 # AI-related files
 AGENTS.md
-# .github/copilot-instructions.md
-.github/
+# Ignore AI/Copilot instructions specifically (not the whole .github/ dir)
+.github/copilot-instructions.md
 
 # specstory files
 .specstory/
@@ -107,3 +107,5 @@ AGENTS.md
 # Dolt database files (added by bd init)
 .dolt/
 *.db
+# MkDocs build output
+site/

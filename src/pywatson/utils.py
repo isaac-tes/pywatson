@@ -85,7 +85,7 @@ def find_project_root(start_path: Optional[Union[str, Path]] = None) -> Optional
     return None
 
 
-def get_project_dir(directory: str, *subdirs, create: bool = True) -> Path:
+def get_project_dir(directory: str, *subdirs: str, create: bool = True) -> Path:
     """
     Get path to a project directory (data, plots, scripts, etc.) with optional subdirectories.
 
@@ -188,7 +188,7 @@ def savename(
     d: dict,
     suffix: str = ".h5",
     connector: str = "_",
-    access=None,
+    access: Optional[Any] = None,
     digits: int = 3,
     ignore_keys: Optional[list] = None,
 ) -> str:
@@ -650,10 +650,10 @@ def tagsave(filename: str, data: Dict[str, Any], tags: Optional[Dict[str, Any]] 
 
 def produce_or_load(
     filename: str,
-    producing_function,
-    *args,
+    producing_function: Any,
+    *args: Any,
     subdir: Optional[str] = None,
-    **kwargs,
+    **kwargs: Any,
 ) -> tuple[Dict[str, Any], Path]:
     """
     Load existing data or produce and save new data (DrWatson.jl-style smart cache).
