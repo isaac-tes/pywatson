@@ -16,7 +16,6 @@ import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 import click
 import yaml
@@ -478,7 +477,12 @@ class ProjectScaffolder:
         # Format dependencies list for display
         deps_list = "\n".join(
             [
-                f"- **{dep.split('==')[0] if '==' in dep else dep.split('>=')[0] if '>=' in dep else dep}**: {dep}"
+                "- **{}**: {}".format(
+                    dep.split("==")[0] if "==" in dep else (
+                        dep.split(">=")[0] if ">=" in dep else dep
+                    ),
+                    dep,
+                )
                 for dep in dependencies
             ]
         )
@@ -928,8 +932,20 @@ def cli() -> None:
     default=".",
     help="Directory to create the project in.",
 )
-@click.option("--author-name", prompt="Author name", default=lambda: _git_config("user.name"), show_default="git config user.name", help="Author name.")
-@click.option("--author-email", prompt="Author email", default=lambda: _git_config("user.email"), show_default="git config user.email", help="Author email.")
+@click.option(
+    "--author-name",
+    prompt="Author name",
+    default=lambda: _git_config("user.name"),
+    show_default="git config user.name",
+    help="Author name.",
+)
+@click.option(
+    "--author-email",
+    prompt="Author email",
+    default=lambda: _git_config("user.email"),
+    show_default="git config user.email",
+    help="Author email.",
+)
 @click.option(
     "--description",
     prompt="Project description",
@@ -995,7 +1011,7 @@ def init_project(
     python_version: str,
     linting_mode: str,
     type_checker: str,
-    env_file: Optional[str],
+    env_file: str | None,
     force: bool,    docker: bool,) -> None:
     """Create a new Python project with modern tooling and best practices.
 
@@ -1142,7 +1158,6 @@ create_project = init_project
 def status_command() -> None:
     """Show an overview of the current PyWatson project."""
     from pathlib import Path
-    import json
 
     # Try to find project root
     cwd = Path.cwd()
@@ -1209,7 +1224,8 @@ def status_command() -> None:
         console.print("\n[bold]Git:[/bold]")
         console.print(f"  Branch  : {branch}")
         console.print(f"  Commit  : {commit}")
-        console.print(f"  Clean   : {'[green]yes[/green]' if not dirty else '[yellow]no (uncommitted changes)[/yellow]'}")
+        clean = "[green]yes[/green]" if not dirty else "[yellow]no (uncommitted changes)[/yellow]"
+        console.print(f"  Clean   : {clean}")
     except Exception:
         pass
 
@@ -1217,7 +1233,9 @@ def status_command() -> None:
 @cli.command("sweep")
 @click.argument("params", nargs=-1, metavar="KEY=VAL[,VAL...] ...")
 @click.option("--suffix", default=".h5", show_default=True, help="File suffix.")
-@click.option("--connector", default="_", show_default=True, help="Connector between key=value pairs.")
+@click.option(
+    "--connector", default="_", show_default=True, help="Connector between key=value pairs."
+)
 def sweep_command(params: tuple, suffix: str, connector: str) -> None:
     """Print filenames for a parameter sweep.
 
@@ -1266,9 +1284,9 @@ def sweep_command(params: tuple, suffix: str, connector: str) -> None:
 @cli.command("summary")
 @click.option("--subdir", default=None, help="Subdirectory within data/ to summarise.")
 @click.option("--recursive", is_flag=True, default=True, help="Search recursively.")
-def summary_command(subdir: Optional[str], recursive: bool) -> None:
+def summary_command(subdir: str | None, recursive: bool) -> None:
     """Summarise HDF5 data files in the project data directory."""
-    from pywatson.utils import collect_results, datadir
+    from pywatson.utils import collect_results
 
     try:
         results = collect_results(subdir=subdir, recursive=recursive)
@@ -1368,8 +1386,8 @@ def summary_command(subdir: Optional[str], recursive: bool) -> None:
 )
 def adopt_command(
     source_path: str,
-    project_name: Optional[str],
-    output_path: Optional[str],
+    project_name: str | None,
+    output_path: str | None,
     auto: bool,
     dry_run: bool,
     do_copy: bool,
@@ -1419,14 +1437,17 @@ def adopt_command(
         )
         sys.exit(1)
 
-    console.print(f"\n[bold blue]PyWatson Adopt[/bold blue]")
+    if dry_run:
+        action = "[yellow]dry-run[/yellow]"
+    elif do_copy:
+        action = "[dim]copy[/dim]"
+    else:
+        action = "[dim]move[/dim]"
+    console.print("\n[bold blue]PyWatson Adopt[/bold blue]")
     console.print(f"  Source  : [dim]{source}[/dim]")
     console.print(f"  Target  : [green]{dest_root}[/green]")
     console.print(f"  Mode    : {'[dim]auto[/dim]' if auto else '[cyan]interactive[/cyan]'}")
-    console.print(
-        f"  Action  : "
-        f"{'[yellow]dry-run[/yellow]' if dry_run else ('[dim]copy[/dim]' if do_copy else '[dim]move[/dim]')}"
-    )
+    console.print(f"  Action  : {action}")
 
     if dest_root.exists() and not dry_run:
         if not auto:

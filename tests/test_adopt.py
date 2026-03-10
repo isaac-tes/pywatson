@@ -10,20 +10,18 @@ Covers:
   - Files pywatson regenerates (requirements.txt, setup.py, …) are skipped
 """
 
-import shutil
 from pathlib import Path
 
 import pytest
-from click.testing import CliRunner
+from click.testing import CliRunner, Result
 
 from pywatson.core import (
+    _REGENERATED_FILES,
     CATEGORY_DEFAULT_DIRS,
     CATEGORY_DESCRIPTIONS,
     ProjectScanner,
-    _REGENERATED_FILES,
     cli,
 )
-
 
 # ===========================================================================
 # Dummy project fixtures
@@ -243,7 +241,7 @@ def _adopt(
     source: Path,
     out: Path,
     *extra_args: str,
-) -> "click.testing.Result":  # type: ignore[name-defined]
+) -> Result:
     """Invoke `pywatson adopt --auto --no-uv` on *source*, writing to *out/output/source.name*.
 
     The output is placed in ``out / "output"`` to guarantee the destination

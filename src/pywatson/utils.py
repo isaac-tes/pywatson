@@ -16,19 +16,19 @@ tagsave    — thin alias that **always** captures git state; equivalent to
              every saved file to be traceable to an exact commit.
 """
 
+import inspect
 import itertools
 import json
 import os
 import platform
-import re as _re
 import subprocess
 import sys
 import tempfile
-import inspect
+from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Generator, Optional, Union
+from typing import Any
 
 import h5py
 import numpy as np
@@ -53,7 +53,7 @@ _PROJECT_ROOT = None
 # Core path and data management functionality for DrWatson-style projects
 
 
-def find_project_root(start_path: Optional[Union[str, Path]] = None) -> Optional[Path]:
+def find_project_root(start_path: str | Path | None = None) -> Path | None:
     """
     Find the project root directory by looking for pyproject.toml or .git.
 
@@ -188,9 +188,9 @@ def savename(
     d: dict,
     suffix: str = ".h5",
     connector: str = "_",
-    access: Optional[Any] = None,
+    access: Any | None = None,
     digits: int = 3,
-    ignore_keys: Optional[list] = None,
+    ignore_keys: list | None = None,
 ) -> str:
     """
     Create a filename from a dictionary, similar to DrWatson's savename.
@@ -309,12 +309,12 @@ def _get_script_info():
 
 # Data management functions
 def save_data(
-    data: Dict[str, Any],
+    data: dict[str, Any],
     filename: str,
-    metadata: Optional[Dict[str, Any]] = None,
-    compression: Optional[str] = "gzip",
+    metadata: dict[str, Any] | None = None,
+    compression: str | None = "gzip",
     include_git: bool = False,
-    subdir: Optional[str] = None,
+    subdir: str | None = None,
 ) -> Path:
     """
     Save data to HDF5 file in the data directory with metadata.
@@ -379,7 +379,7 @@ def save_data(
     return filepath
 
 
-def load_data(filename: str, keys: Optional[list] = None) -> Dict[str, Any]:
+def load_data(filename: str, keys: list | None = None) -> dict[str, Any]:
     """
     Load data from HDF5 file in the data directory.
 
@@ -427,10 +427,10 @@ def load_data(filename: str, keys: Optional[list] = None) -> Dict[str, Any]:
 
 
 def _save_value_to_hdf5(
-    parent: Union[h5py.File, h5py.Group],
+    parent: h5py.File | h5py.Group,
     key: str,
     value: Any,
-    compression: Optional[str] = "gzip",
+    compression: str | None = "gzip",
 ) -> None:
     """Write a single value into an HDF5 file or group."""
     if _HAS_PANDAS and isinstance(value, pd.DataFrame):
@@ -463,14 +463,14 @@ def _save_value_to_hdf5(
 
 
 def _save_dict_to_group(
-    group: h5py.Group, data: Dict[str, Any], compression: Optional[str] = "gzip"
+    group: h5py.Group, data: dict[str, Any], compression: str | None = "gzip"
 ) -> None:
     """Recursively save dictionary to HDF5 group."""
     for key, value in data.items():
         _save_value_to_hdf5(group, key, value, compression)
 
 
-def _load_item_from_hdf5(item: Union[h5py.Dataset, h5py.Group]) -> Any:
+def _load_item_from_hdf5(item: h5py.Dataset | h5py.Group) -> Any:
     """Load item from HDF5 file (dataset or group), reconstructing DataFrames."""
     if isinstance(item, h5py.Group):
         if item.attrs.get("_pywatson_type") == "dataframe" and _HAS_PANDAS:
@@ -495,7 +495,7 @@ def _load_item_from_hdf5(item: Union[h5py.Dataset, h5py.Group]) -> Any:
         return item
 
 
-def load_selective(filename: str, keys: list) -> Dict[str, Any]:
+def load_selective(filename: str, keys: list) -> dict[str, Any]:
     """
     Load only specific keys from HDF5 file (convenience wrapper for load_data).
     Metadata is always loaded automatically.
@@ -523,7 +523,7 @@ def list_data_files() -> list[Path]:
     return list(data_dir.glob("*.h5"))
 
 
-def data_info(filename: str) -> Dict[str, Any]:
+def data_info(filename: str) -> dict[str, Any]:
     """
     Get information about a data file without loading all data.
 
@@ -574,7 +574,7 @@ def data_info(filename: str) -> Dict[str, Any]:
     return info
 
 
-def save_array(array: np.ndarray, name: str, metadata: Optional[Dict[str, Any]] = None) -> Path:
+def save_array(array: np.ndarray, name: str, metadata: dict[str, Any] | None = None) -> Path:
     """
     Convenience function to save a single numpy array.
 
@@ -589,7 +589,7 @@ def save_array(array: np.ndarray, name: str, metadata: Optional[Dict[str, Any]] 
     return save_data({name: array}, name, metadata)
 
 
-def load_array(filename: str, array_name: Optional[str] = None) -> np.ndarray:
+def load_array(filename: str, array_name: str | None = None) -> np.ndarray:
     """
     Convenience function to load a single numpy array.
 
@@ -617,7 +617,7 @@ def load_array(filename: str, array_name: Optional[str] = None) -> np.ndarray:
     return arrays[array_name]
 
 
-def tagsave(filename: str, data: Dict[str, Any], tags: Optional[Dict[str, Any]] = None) -> Path:
+def tagsave(filename: str, data: dict[str, Any], tags: dict[str, Any] | None = None) -> Path:
     """
     Save data with git state and custom tags (DrWatson.jl-style alias).
 
@@ -652,9 +652,9 @@ def produce_or_load(
     filename: str,
     producing_function: Any,
     *args: Any,
-    subdir: Optional[str] = None,
+    subdir: str | None = None,
     **kwargs: Any,
-) -> tuple[Dict[str, Any], Path]:
+) -> tuple[dict[str, Any], Path]:
     """
     Load existing data or produce and save new data (DrWatson.jl-style smart cache).
 
@@ -701,9 +701,9 @@ def produce_or_load(
     return data, filepath
 
 
-def _load_data_from_path(filepath: Path) -> Dict[str, Any]:
+def _load_data_from_path(filepath: Path) -> dict[str, Any]:
     """Load HDF5 data from an absolute path (internal helper)."""
-    data: Dict[str, Any] = {}
+    data: dict[str, Any] = {}
     with h5py.File(filepath, "r") as f:
         if "metadata" in f.attrs:
             try:
@@ -716,11 +716,11 @@ def _load_data_from_path(filepath: Path) -> Dict[str, Any]:
 
 
 def collect_results(
-    folder_path: Optional[str] = None,
-    subdir: Optional[str] = None,
+    folder_path: str | None = None,
+    subdir: str | None = None,
     recursive: bool = True,
     as_dataframe: bool = False,
-) -> "list[Dict[str, Any]] | pd.DataFrame":
+) -> "list[dict[str, Any]] | pd.DataFrame":
     """
     Collect all results from .h5 files in a folder.
 
@@ -748,7 +748,7 @@ def collect_results(
         return (pd.DataFrame() if as_dataframe and _HAS_PANDAS else [])
 
     pattern = "**/*.h5" if recursive else "*.h5"
-    results: list[Dict[str, Any]] = []
+    results: list[dict[str, Any]] = []
 
     for filepath in sorted(folder.glob(pattern)):
         try:
@@ -767,7 +767,7 @@ def collect_results(
         # Flatten scalar metadata fields into top-level columns
         flat_rows = []
         for row in results:
-            flat: Dict[str, Any] = {}
+            flat: dict[str, Any] = {}
             for k, v in row.items():
                 if k == "_metadata" and isinstance(v, dict):
                     for mk, mv in v.items():
@@ -785,7 +785,7 @@ def collect_results(
 # ---------------------------------------------------------------------------
 
 
-def parse_savename(filename: str) -> Dict[str, Any]:
+def parse_savename(filename: str) -> dict[str, Any]:
     """
     Parse a filename produced by :func:`savename` back into a parameter dict.
 
@@ -806,18 +806,18 @@ def parse_savename(filename: str) -> Dict[str, Any]:
     """
     # Strip directory component, then strip only *known* file extensions from the right.
     # Using Path.stem in a loop would drop value-dots (e.g. alpha=0.5 → alpha=0).
-    _KNOWN_EXTS = {".h5", ".npz", ".zarr", ".nc", ".csv", ".json", ".pkl", ".tmp", ".npy"}
+    _known_exts = {".h5", ".npz", ".zarr", ".nc", ".csv", ".json", ".pkl", ".tmp", ".npy"}
     stem = Path(filename).name
     changed = True
     while changed:
         changed = False
-        for ext in _KNOWN_EXTS:
+        for ext in _known_exts:
             if stem.endswith(ext):
                 stem = stem[: -len(ext)]
                 changed = True
                 break
 
-    result: Dict[str, Any] = {}
+    result: dict[str, Any] = {}
     for part in stem.split("_"):
         if "=" not in part:
             continue
@@ -835,7 +835,7 @@ def parse_savename(filename: str) -> Dict[str, Any]:
     return result
 
 
-def dict_list(*dicts: dict) -> list[Dict[str, Any]]:
+def dict_list(*dicts: dict) -> list[dict[str, Any]]:
     """
     Expand parameter dictionaries into every combination (Cartesian product).
 
@@ -858,7 +858,7 @@ def dict_list(*dicts: dict) -> list[Dict[str, Any]]:
         [{'model': 'euler', 'dt': 0.01, 'T': 10},
          {'model': 'euler', 'dt': 0.001, 'T': 10}]
     """
-    combined: Dict[str, Any] = {}
+    combined: dict[str, Any] = {}
     for d in dicts:
         combined.update(d)
 
@@ -874,11 +874,11 @@ def dict_list(*dicts: dict) -> list[Dict[str, Any]]:
 
 def safesave(
     filename: str,
-    data: Dict[str, Any],
-    metadata: Optional[Dict[str, Any]] = None,
-    compression: Optional[str] = "gzip",
+    data: dict[str, Any],
+    metadata: dict[str, Any] | None = None,
+    compression: str | None = "gzip",
     include_git: bool = False,
-    subdir: Optional[str] = None,
+    subdir: str | None = None,
 ) -> Path:
     """
     Atomically save data to an HDF5 file, preventing partial-write corruption.
@@ -940,9 +940,9 @@ def safesave(
 
 @contextmanager
 def tmpsave(
-    data: Dict[str, Any],
+    data: dict[str, Any],
     suffix: str = ".h5",
-    compression: Optional[str] = "gzip",
+    compression: str | None = "gzip",
 ) -> Generator[Path, None, None]:
     """
     Context manager: save data to a temporary file, yield its path, then delete it.
@@ -978,7 +978,7 @@ def tmpsave(
             tmp_path.unlink()
 
 
-def snapshot_environment() -> Dict[str, Any]:
+def snapshot_environment() -> dict[str, Any]:
     """
     Capture the current Python environment for reproducibility.
 
@@ -1009,7 +1009,7 @@ def snapshot_environment() -> Dict[str, Any]:
     }
 
 
-def set_random_seed(seed: int) -> Dict[str, int]:
+def set_random_seed(seed: int) -> dict[str, int]:
     """
     Set random seeds for reproducibility and return a metadata-ready dict.
 
@@ -1046,11 +1046,11 @@ def set_random_seed(seed: int) -> Dict[str, int]:
 
 
 def save_npz(
-    data: Dict[str, Any],
+    data: dict[str, Any],
     filename: str,
-    metadata: Optional[Dict[str, Any]] = None,
+    metadata: dict[str, Any] | None = None,
     compressed: bool = True,
-    subdir: Optional[str] = None,
+    subdir: str | None = None,
 ) -> Path:
     """
     Save arrays to a NumPy ``.npz`` archive in the data directory.
@@ -1087,8 +1087,8 @@ def save_npz(
 
 def load_npz(
     filename: str,
-    subdir: Optional[str] = None,
-) -> Dict[str, Any]:
+    subdir: str | None = None,
+) -> dict[str, Any]:
     """
     Load a NumPy ``.npz`` archive from the data directory.
 
@@ -1111,7 +1111,7 @@ def load_npz(
         raise FileNotFoundError(f"NPZ file not found: {filepath}")
 
     npz = np.load(str(filepath), allow_pickle=False)
-    result: Dict[str, Any] = {}
+    result: dict[str, Any] = {}
     for key in npz.files:
         if key == "_metadata_json":
             try:
@@ -1129,11 +1129,11 @@ def load_npz(
 
 
 def save_zarr(
-    data: Dict[str, Any],
+    data: dict[str, Any],
     filename: str,
-    metadata: Optional[Dict[str, Any]] = None,
+    metadata: dict[str, Any] | None = None,
     compression: str = "blosc",
-    subdir: Optional[str] = None,
+    subdir: str | None = None,
 ) -> Path:
     """
     Save arrays to a Zarr store in the data directory.
@@ -1166,9 +1166,8 @@ def save_zarr(
 
     import numcodecs  # type: ignore[import]
 
-    compressor = {"blosc": numcodecs.Blosc(), "gzip": numcodecs.GZip(), "zstd": numcodecs.Zstd()}.get(
-        compression, numcodecs.Blosc()
-    )
+    _compressors = {"blosc": numcodecs.Blosc(), "gzip": numcodecs.GZip(), "zstd": numcodecs.Zstd()}
+    compressor = _compressors.get(compression, numcodecs.Blosc())
 
     z = zarr.open(str(store_path), mode="w")
     for key, value in data.items():
@@ -1182,9 +1181,9 @@ def save_zarr(
 
 def load_zarr(
     filename: str,
-    keys: Optional[list] = None,
-    subdir: Optional[str] = None,
-) -> Dict[str, Any]:
+    keys: list | None = None,
+    subdir: str | None = None,
+) -> dict[str, Any]:
     """
     Load arrays from a Zarr store in the data directory.
 
@@ -1216,7 +1215,7 @@ def load_zarr(
         raise FileNotFoundError(f"Zarr store not found: {store_path}")
 
     z = zarr.open(str(store_path), mode="r")
-    result: Dict[str, Any] = {}
+    result: dict[str, Any] = {}
 
     if "metadata" in z.attrs:
         try:

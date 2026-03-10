@@ -129,8 +129,10 @@ nav:
       - CLI Reference: CLI.md
       - Utilities Reference: UTILITIES.md
   - Resources:
+      - Makefile Guide: MAKEFILE_GUIDE.md
       - Docker Guide: DOCKER_GUIDE.md
       - Zenodo & Citation: ZENODO.md
+      - Citation: citation.md
   - API Reference:
       - Overview: api/index.md
       - Core (Scaffolder & CLI): api/core.md

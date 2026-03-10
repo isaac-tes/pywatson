@@ -5,8 +5,9 @@ Verifies that all Jinja2 templates can be loaded, rendered, and produce
 valid content. Python templates are additionally checked for valid syntax.
 """
 
-import pytest
 from pathlib import Path
+
+import pytest
 from jinja2 import Environment, PackageLoader, select_autoescape
 
 

@@ -4,11 +4,10 @@ from pathlib import Path
 
 import h5py
 import numpy as np
-import pywatson.utils as _utils
 from click.testing import CliRunner
 
+import pywatson.utils as _utils
 from pywatson.core import cli
-
 
 # ---------------------------------------------------------------------------
 # Helpers

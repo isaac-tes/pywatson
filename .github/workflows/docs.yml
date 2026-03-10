@@ -32,6 +32,9 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-groups
 
+      - name: Sync README to docs/index.md
+        run: uv run python scripts/generate_readme.py
+
       - name: Build docs (PR check only)
         if: github.event_name == 'pull_request'
         run: uv run mkdocs build

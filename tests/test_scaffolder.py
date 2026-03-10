@@ -5,11 +5,13 @@ Tests the ProjectScaffolder class with all three project types
 (default, minimal, full) and license options.
 """
 
-import pytest
-import tempfile
 import shutil
+import tempfile
 from pathlib import Path
-from pywatson.core import ProjectScaffolder, PROJECT_TYPES, LICENSE_TEMPLATES
+
+import pytest
+
+from pywatson.core import LICENSE_TEMPLATES, PROJECT_TYPES, ProjectScaffolder
 
 
 class TestProjectScaffolder:

@@ -56,15 +56,15 @@ jobs:
   tests:
     runs-on: {% raw %}${{ matrix.os }}{% endraw %}
 
-        strategy:
-          fail-fast: false
-          matrix:
-            os: [ubuntu-latest, macos-latest]
-            # The matrix uses the declared python_version; keep it as
-            # a single-value list so users can customize it when creating
-            # the project (e.g. 3.12, 3.11). Using a matrix allows us to
-            # extend to multiple Python versions later if desired.
-            python-version: ["{{ python_version }}"]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        # The matrix uses the declared python_version; keep it as
+        # a single-value list so users can customize it when creating
+        # the project (e.g. 3.12, 3.11). Using a matrix allows us to
+        # extend to multiple Python versions later if desired.
+        python-version: ["{{ python_version }}"]
 
     steps:
       - uses: actions/checkout@v4

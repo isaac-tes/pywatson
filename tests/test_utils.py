@@ -1142,7 +1142,7 @@ class TestCollectResultsDataFrame:
 
     def test_dataframe_has_filepath_column(self, mock_project):
         """DataFrame includes _filepath column."""
-        pd = pytest.importorskip("pandas")
+        pytest.importorskip("pandas")
         save_data({"x": 1.0}, "df_fp")
         df = collect_results(as_dataframe=True)
         assert "_filepath" in df.columns

@@ -67,9 +67,17 @@ select = [
 ]
 ignore = [
     "D100",   # Missing docstring in public module (too noisy for templates)
+    "D102",   # Missing docstring in public method (too noisy in tests)
     "D104",   # Missing docstring in public package
+    "D107",   # Missing docstring in __init__
     "D203",   # One blank line before class docstring (conflicts with D211)
+    "D205",   # 1 blank line required between summary line and description
+    "D212",   # Multi-line docstring summary on first line (conflicts with D213)
     "D213",   # Multi-line docstring summary on second line (conflicts with D212)
+    "D301",   # Use r""" for docstrings with backslashes
+    "D403",   # First word should be imperatively capitalized (breaks savename/uv names)
+    "D415",   # First line should end with period, question mark, or exclamation point
+    "D416",   # Section name should end with a colon
 ]
 
 [tool.ruff.lint.isort]
