@@ -1,20 +1,28 @@
-document$.subscribe(function () {
+function initLogoHomeRedirect() {
   function getHomeUrl() {
-    // On GitHub project pages, keep the first path segment (repo name), e.g. /pywatson/.
-    var parts = window.location.pathname.split('/').filter(Boolean);
-    var firstSegment = parts.length > 0 ? parts[0] : '';
-    if (window.location.hostname.endsWith('github.io') && firstSegment) {
-      return window.location.origin + '/' + firstSegment + '/';
+    // For this GitHub Pages project site, force the project base path.
+    if (window.location.hostname.endsWith('github.io')) {
+      return window.location.origin + '/pywatson/';
     }
 
-    // Fallback for custom domains / local previews.
+    // Fallback for local/custom-domain previews.
     return window.location.origin + '/';
   }
 
   var homeUrl = getHomeUrl();
+  var logoRoot = document.querySelector('.md-header__button.md-logo');
+  if (!logoRoot) {
+    return;
+  }
 
-  // Make both the logo container and inner anchor consistently navigate to homeUrl.
-  var targets = document.querySelectorAll('.md-header__button.md-logo, .md-header__button.md-logo a');
+  // Ensure native anchor navigation points to the correct site root.
+  var logoAnchor = logoRoot.tagName === 'A' ? logoRoot : logoRoot.querySelector('a');
+  if (logoAnchor) {
+    logoAnchor.setAttribute('href', homeUrl);
+  }
+
+  // Defensive click handling for both container and anchor.
+  var targets = [logoRoot, logoAnchor].filter(Boolean);
   targets.forEach(function (target) {
     if (target.classList.contains('clickable-added')) {
       return;
@@ -27,4 +35,10 @@ document$.subscribe(function () {
     });
     target.classList.add('clickable-added');
   });
-});
+}
+
+if (typeof document$ !== 'undefined' && document$.subscribe) {
+  document$.subscribe(initLogoHomeRedirect);
+} else {
+  document.addEventListener('DOMContentLoaded', initLogoHomeRedirect);
+}
