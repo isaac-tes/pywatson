@@ -104,7 +104,6 @@ my-project/
 │   ├── __init__.py         # Public API (PyWatson helpers re-exported)
 │   ├── core.py             # Your analysis code
 │   ├── pywatson_utils.py   # Self-contained PyWatson utilities
-│   └── py.typed            # PEP 561 typed-package marker
 ├── scripts/
 │   ├── generate_data.py
 │   └── analyze_data.py

@@ -126,7 +126,6 @@ my-analysis/
 │   ├── __init__.py         # Public API — re-exports PyWatson utilities
 │   ├── core.py             # Your project-specific analysis functions
 │   ├── pywatson_utils.py   # Copied PyWatson utilities (editable in-project)
-│   └── py.typed            # PEP 561 typed-package marker
 ├── scripts/
 │   ├── generate_data.py    # Example data generation script
 │   ├── analyze_data.py     # Example analysis workflow

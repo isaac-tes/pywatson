@@ -41,7 +41,7 @@ Files are sorted into 9 categories:
 | **notebooks** | *.ipynb | `notebooks/` |
 | **data** | *.csv, *.json, *.h5 | `data/` |
 | **scripts** | main.py, analyze.py (with `if __name__=='__main__'`) | `scripts/` |
-| **source** | helper.py, utils.py, `py.typed` | `src/{package_name}/` |
+| **source** | helper.py, utils.py | `src/{package_name}/` |
 | **docs** | CHANGELOG.md, CONTRIBUTING.md, *.rst | `docs/` |
 | **config** | README.md, LICENSE, *.yml, *.toml, *.ini, `uv.lock`, `.python-version` | Project root |
 | **images** | *.png, *.jpg, *.pdf | `plots/` |
