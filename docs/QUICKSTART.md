@@ -124,7 +124,9 @@ uv run pytest    # confirm tests pass (should be 2/2 green)
 my-analysis/
 ├── src/my_analysis/
 │   ├── __init__.py         # Public API — re-exports PyWatson utilities
-│   └── core.py             # Your project-specific analysis functions
+│   ├── core.py             # Your project-specific analysis functions
+│   ├── pywatson_utils.py   # Copied PyWatson utilities (editable in-project)
+│   └── py.typed            # PEP 561 typed-package marker
 ├── scripts/
 │   ├── generate_data.py    # Example data generation script
 │   ├── analyze_data.py     # Example analysis workflow
@@ -140,15 +142,14 @@ my-analysis/
 ├── _research/              # WIP scripts & scratch work (not committed by default)
 │   └── tmp/                # Temporary files (git-ignored)
 ├── docs/                   # Documentation
-├── pywatson_utils.py       # Copied PyWatson utilities (editable in-project)
 ├── pyproject.toml
 ├── ruff.toml
 ├── LICENSE
 └── README.md
 ```
 
-> **Note**: The file `pywatson_utils.py` is copied verbatim from pywatson's
-> `src/pywatson/utils.py` into each generated project, so projects are
+> **Note**: The file `src/my_analysis/pywatson_utils.py` is copied verbatim from
+> pywatson's `src/pywatson/utils.py` into each generated project, so projects are
 > fully self-contained and do not depend on pywatson at runtime.
 
 ---

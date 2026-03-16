@@ -10,7 +10,7 @@
 A Python scientific project management tool inspired by
 [DrWatson.jl](https://github.com/JuliaDynamics/DrWatson.jl).
 Scaffolds reproducible scientific projects with modern Python tooling
-([uv](https://docs.astral.sh/uv/) + pytest + ruff) and PyWatson path
+([uv](https://docs.astral.sh/uv/) + [pytest](https://docs.pytest.org/en/stable/) + [ruff](https://docs.astral.sh/ruff/)) and PyWatson path
 management, HDF5 data handling, and smart caching.
 
 ## ✨ Features
@@ -103,7 +103,8 @@ my-project/
 ├── src/my_project/
 │   ├── __init__.py         # Public API (PyWatson helpers re-exported)
 │   ├── core.py             # Your analysis code
-│   └── pywatson_utils.py   # Self-contained PyWatson utilities
+│   ├── pywatson_utils.py   # Self-contained PyWatson utilities
+│   └── py.typed            # PEP 561 typed-package marker
 ├── scripts/
 │   ├── generate_data.py
 │   └── analyze_data.py

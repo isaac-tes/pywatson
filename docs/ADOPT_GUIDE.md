@@ -41,9 +41,9 @@ Files are sorted into 9 categories:
 | **notebooks** | *.ipynb | `notebooks/` |
 | **data** | *.csv, *.json, *.h5 | `data/` |
 | **scripts** | main.py, analyze.py (with `if __name__=='__main__'`) | `scripts/` |
-| **source** | helper.py, utils.py (with `def`/`class`) | `src/{package_name}/` |
-| **docs** | README.md, *.rst | `docs/` |
-| **config** | *.yml, *.toml, *.ini, requirements.txt | Project root |
+| **source** | helper.py, utils.py, `py.typed` | `src/{package_name}/` |
+| **docs** | CHANGELOG.md, CONTRIBUTING.md, *.rst | `docs/` |
+| **config** | README.md, LICENSE, *.yml, *.toml, *.ini, `uv.lock`, `.python-version` | Project root |
 | **images** | *.png, *.jpg, *.pdf | `plots/` |
 | **other** | Anything else | `_research/` |
 
@@ -87,14 +87,14 @@ pywatson adopt SOURCE_PATH [OPTIONS]
 | Option | Purpose |
 |--------|---------|
 | `-n, --project-name NAME` | Custom project name (default: source dir name) |
-| `-o, --output-path PATH` | Write to different location (default: cwd) |
+| `-o, --output-path PATH` | Write to different location (default: alongside source as `<name>_pywatson`) |
 | `--auto` | Skip interactive confirmation |
 | `--dry-run` | Preview plan, don't write anything |
 | `--copy` | Copy files (default) |
 | `--move` | Move files instead of copying |
 | `--no-uv` | Skip `uv init` (useful for offline/testing) |
-| `--author-name NAME` | Set author (required) |
-| `--author-email EMAIL` | Set email (required) |
+| `--author-name NAME` | Set author (default: `git config user.name`) |
+| `--author-email EMAIL` | Set email (default: `git config user.email`) |
 | `--description TEXT` | Project description |
 | `-t, --project-type TYPE` | default, minimal, or full (default: default) |
 | `--license TYPE` | MIT, Apache-2.0, BSD-3-Clause, ISC |

@@ -77,7 +77,9 @@ A `pywatson` run creates a ready-to-use project:
 my-analysis/
 ├── src/my_analysis/
 │   ├── __init__.py          # Public API — all PyWatson helpers re-exported
-│   └── core.py              # Your project-specific analysis code
+│   ├── core.py              # Your project-specific analysis code
+│   ├── pywatson_utils.py    # PyWatson utilities (fully self-contained copy)
+│   └── py.typed             # PEP 561 typed-package marker
 ├── scripts/
 │   ├── generate_data.py
 │   ├── analyze_data.py
@@ -91,7 +93,6 @@ my-analysis/
 │   └── exp_pro/
 ├── plots/
 ├── _research/tmp/
-├── pywatson_utils.py        # PyWatson utilities (fully self-contained copy)
 ├── pyproject.toml
 ├── ruff.toml
 └── README.md
