@@ -144,6 +144,7 @@ plugins:
             annotations_path: brief
 
 extra:
+  site_home_url: https://isaac-tes.github.io/pywatson/
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/isaac-tes/pywatson
