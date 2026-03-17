@@ -79,3 +79,15 @@ See [AGENTS.md](AGENTS.md) for comprehensive code style guidelines including:
 - Use GitHub Issues for bug reports and feature requests.
 - Include the Python version, uv version, and OS in bug reports.
 - For generated project issues, include the command used to create the project.
+
+## Releases
+
+- `CHANGELOG.md` is the single source of truth for release notes.
+- Do not maintain separate ad-hoc release notes files (for example in `_research/tmp/`).
+- When publishing or updating a release, use:
+
+```bash
+gh release edit vX.Y.Z --notes-file CHANGELOG.md
+```
+
+- Keep release notes and changelog in sync by editing `CHANGELOG.md` first.

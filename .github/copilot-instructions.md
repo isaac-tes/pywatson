@@ -57,6 +57,8 @@ This file defines the project rules, coding standards, workflow guidelines, refe
 *   Project structure should follow the DrWatson.jl-inspired layout.
 *   `docs/index.md` is **auto-generated** from `README.md` — run `python scripts/generate_readme.py` before every `mkdocs build`.
 *   Always build docs with `--strict`: `python scripts/generate_readme.py && uv run mkdocs build --strict`.
+*   `CHANGELOG.md` is the single source of truth for release notes.
+*   Do not keep separate ad-hoc release notes files (e.g. `_research/tmp/release_notes.md`).
 *   A `MAKEFILE_GUIDE.md` file will be created for documentation purposes when needed.
 
 ## DEBUGGING
