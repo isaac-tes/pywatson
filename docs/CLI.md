@@ -34,7 +34,8 @@ pywatson --project-name NAME [OPTIONS]
 | `--linting` | `minimal` | Ruff ruleset: `minimal` or `strict` |
 | `--type-checker` | `ty` | Type checker: `ty`, `mypy`, or `none` |
 | `--env-file PATH` | — | Import deps from a conda `environment.yml` |
-| `--docker` | _(flag)_ | Add Docker + Zenodo reproducibility scaffolding |
+| `--docker` | _(flag)_ | Scaffold Docker + docker-compose files for container reproducibility |
+| `--zenodo` | _(flag)_ | Generate `.zenodo.json` metadata for Zenodo GitHub integration (auto-DOI on release) |
 | `--force` | _(flag)_ | Overwrite existing project directory |
 
 ### Project types
@@ -67,6 +68,16 @@ pywatson --project-name my-analysis --env-file environment.yml
 pywatson --project-name my-analysis \
   --project-type full \
   --docker
+
+# With Zenodo DOI metadata (links GitHub release → auto-minted DOI)
+pywatson --project-name my-analysis \
+  --zenodo
+
+# Full reproducibility stack: Docker image + Zenodo deposit
+pywatson --project-name my-analysis \
+  --project-type full \
+  --docker \
+  --zenodo
 ```
 
 ### What gets created

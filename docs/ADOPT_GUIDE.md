@@ -99,6 +99,8 @@ pywatson adopt SOURCE_PATH [OPTIONS]
 | `-t, --project-type TYPE` | default, minimal, or full (default: default) |
 | `--license TYPE` | MIT, Apache-2.0, BSD-3-Clause, ISC |
 | `--python-version VERSION` | Minimum Python version (default: 3.12) |
+| `--docker` | Scaffold Docker + docker-compose files for container reproducibility |
+| `--zenodo` | Generate `.zenodo.json` metadata for Zenodo GitHub integration |
 
 ## Examples
 
