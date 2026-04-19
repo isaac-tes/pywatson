@@ -1,83 +1,118 @@
 ---
-description: AI rules derived by SpecStory from the project AI interaction history
+description: AI coding assistant instructions for the PyWatson project
 applyTo: *
 ---
 
 ## PROJECT OVERVIEW
-This file defines the project rules, coding standards, workflow guidelines, references, documentation structure, and best practices for the AI coding assistant. It is a living document that evolves with the project.
+
+PyWatson is a Python scientific project management tool inspired by
+[DrWatson.jl](https://juliadynamics.github.io/DrWatson.jl/stable/).
+It scaffolds reproducible scientific computing projects with modern Python
+tooling (uv, pytest, ruff) and provides utilities for path management, HDF5
+data handling, parameter-based filenames, and smart caching.
+
+- **Language**: Python 3.12+
+- **Package manager**: [uv](https://docs.astral.sh/uv/) (not pip, not conda)
+- **Build backend**: `uv_build`
+- **Layout**: `src/` layout — the package lives at `src/pywatson/`
+- **Entry point**: `pywatson` CLI via Click → `pywatson.core:cli`
+
+## BUILD / LINT / TEST COMMANDS
+
+All commands use `uv run` to execute inside the project's virtual environment.
+
+```bash
+# Setup
+uv sync                        # Install all deps including dev group
+
+# Tests
+uv run pytest                  # Run all tests
+uv run pytest tests/test_scaffolder.py  # Single file
+uv run pytest tests/test_scaffolder.py::TestProjectScaffolder::test_scaffolder_initialization  # Single method
+uv run pytest -k "template"    # Keyword match
+uv run pytest -v -s            # Verbose, no capture
+uv run pytest -m docker        # Docker-tagged tests (require Docker daemon)
+
+# Lint + format (ruff)
+uv run ruff check src/ tests/
+uv run ruff check --fix src/ tests/
+uv run ruff format src/ tests/
+
+# Type check
+uv run mypy src/pywatson/
+
+# Build
+uv build
+
+# Docs — sync README first, then build with --strict
+python scripts/generate_readme.py && uv run mkdocs build --strict
+
+# CLI
+uv run pywatson --help
+```
+
+## ARCHITECTURE
+
+| Component | Description |
+|-----------|-------------|
+| `src/pywatson/core.py` | `ProjectScaffolder` class + Click CLI (`init`, `adopt`, `status`, `sweep`, `summary`) |
+| `src/pywatson/utils.py` | PyWatson utilities — copied **verbatim** into generated projects as `pywatson_utils.py` (not templated) |
+| `src/pywatson/__init__.py` | Public API re-exports from core + utils |
+| `src/pywatson/templates/` | Jinja2 `.jinja2` templates for generated project files |
+| `tests/test_scaffolder.py` | Integration tests for ProjectScaffolder |
+| `tests/test_templates.py` | Template rendering tests |
+
+### Key Design Decisions
+
+- `utils.py` is copied verbatim — generated projects are fully self-contained and do not depend on pywatson at runtime
+- `_PROJECT_ROOT` global caches the project root to avoid repeated filesystem walks
+- HDF5 is the default data format (via h5py); metadata stored as JSON in HDF5 attributes
+- `save_data` has `include_git=False` by default; `tagsave` always captures git state
+- `produce_or_load()` implements DrWatson.jl-style smart caching
+- `savename()` creates deterministic filenames from parameter dictionaries
+- Three project types: `default`, `minimal`, `full`
 
 ## CODE STYLE
-*   Follow PEP 8 guidelines for Python code.
-*   Use descriptive names for variables and functions.
-*   Keep functions short and focused.
-*   Add docstrings to all functions and classes.
-*   Use type hints.
 
-## FOLDER ORGANIZATION
-*   `src/`: Source code for the project.
-*   `scripts/`: Standalone scripts and utilities.
-*   `notebooks/`: Jupyter notebooks for analysis and examples.
-*   `tests/`: Unit tests.
-*   `plots/`: Generated plots and figures.
-*   `data/`: Data files (raw and processed).
-*   `docs/`: Documentation.
-*   `_research/`: WIP scripts, code, notes, comments, to-dos and anything in an alpha state
-*   `_research/tmp/`: Temporary data folder.
+- **Line length**: 99 characters (configured in pyproject.toml `[tool.ruff]`)
+- **Imports**: stdlib > third-party > local; use relative imports (`from .module import ...`)
+- **Type annotations**: required on public function signatures; use Python 3.12+ builtins (`list[str]`, `X | None`)
+- **Docstrings**: Google style (`Args:`, `Returns:`, `Raises:`)
+- **Naming**: PascalCase classes, snake_case functions/variables, UPPER_SNAKE_CASE constants
+- **Quotes**: double quotes; trailing commas in multi-line structures
 
-## TECH STACK
-*   Python 3.12+
-*   Click >=8.3.0
-*   h5py >=3.14.0
-*   Jinja2 >=3.1.6
-*   PyYAML >=6.0.3
-*   Rich >=14.1.0
-*   uv >=0.8.11,<0.9.0 (for build system)
-*   pytest >=8.4.2 (for testing)
-*   pandas (for csv data loading)
+## TESTING CONVENTIONS
 
-## PROJECT-SPECIFIC STANDARDS
-*   Project scaffolding uses the `ProjectScaffolder` class in `core.py`.
-*   Templates are located in the `src/pywatson/templates/` directory as `.jinja2` files.
-*   Use Jinja2 templates for generating project files.
-*   `utils.py` is copied directly and not templated.
+- pytest, organized into `TestXxx` classes within test files
+- Fixtures: defined as methods within test classes using `@pytest.fixture` with `yield` + cleanup
+- Assertions: plain `assert` (pytest-style), never `unittest` assertions
+- No conftest.py — fixtures live inside the test classes that use them
+- Generated Python templates validated with `compile()` to verify syntax
 
-## WORKFLOW & RELEASE RULES
-*   Create a new branch for each feature or bug fix.
-*   Write unit tests for all new code.
-*   Run all tests before committing changes.
-*   Use uv for dependency management.
+## TEMPLATE DEVELOPMENT
 
-## REFERENCE EXAMPLES
-*   See `src/pywatson/core.py` for examples of project scaffolding.
-*   See `src/pywatson/templates/` for Jinja2 template examples.
+- Templates live in `src/pywatson/templates/` as `.jinja2` files
+- Common context variables: `project_name`, `package_name`, `author_name`, `author_email`, `project_name_title`, `description`
+- After adding a new template, add a rendering test in `tests/test_templates.py`
 
-## PROJECT DOCUMENTATION & CONTEXT SYSTEM
-*   Use README.md to document the project.
-*   Use docstrings to document all functions and classes.
-*   Project structure should follow the DrWatson.jl-inspired layout.
-*   `docs/index.md` is **auto-generated** from `README.md` — run `python scripts/generate_readme.py` before every `mkdocs build`.
-*   Always build docs with `--strict`: `python scripts/generate_readme.py && uv run mkdocs build --strict`.
-*   `CHANGELOG.md` is the single source of truth for release notes.
-*   Do not keep separate ad-hoc release notes files (e.g. `_research/tmp/release_notes.md`).
-*   A `MAKEFILE_GUIDE.md` file will be created for documentation purposes when needed.
+## PROJECT DOCUMENTATION
 
-## DEBUGGING
-N/A
+- `docs/index.md` is **auto-generated** from `README.md` — run `python scripts/generate_readme.py` before every `mkdocs build`
+- Always build docs with `--strict`: `python scripts/generate_readme.py && uv run mkdocs build --strict`
+- `CHANGELOG.md` is the single source of truth for release notes
 
-## FINAL DOs AND DON'Ts
-*   **DO** edit templates like normal Python files. They ARE Python files.
-*   **DO** use `{{ variable_name }}` for dynamic content. These get replaced.
-*   **DO** test after changes. Run `uv run pytest` or create a test project.
-*   **DO** check syntax. Your editor will highlight Python syntax errors.
-*   **DO** commit template changes. They're source code.
-*   **DO** check CI pipelines after every push: run `gh run list` and wait for all runs to show `completed / success` before considering work done. Fix any failures immediately.
-*   **DON'T** escape `{}` in templates. Not needed (that was the old problem!).
-*   **DON'T** edit generated projects. Edit the template instead.
-*   **DON'T** forget to update tests if you change templates significantly.
-*   **DON'T** declare a task complete if any CI pipeline (Tests, Build & Deploy Docs) is still running or has failed.
+## DOs AND DON'Ts
 
+- **DO** edit templates like normal Python files. They ARE Python files.
+- **DO** use `{{ variable_name }}` for dynamic content. These get replaced.
+- **DO** test after changes. Run `uv run pytest` or create a test project.
+- **DO** check CI pipelines after every push: run `gh run list` and wait for all runs to show `completed / success` before considering work done.
+- **DON'T** escape `{}` in templates. Not needed.
+- **DON'T** edit generated projects. Edit the template instead.
+- **DON'T** forget to update tests if you change templates significantly.
+- **DON'T** declare a task complete if any CI pipeline is still running or has failed.
 
-<!-- BEGIN BEADS INTEGRATION -->
+<!-- BEGIN BEADS INTEGRATION v:1 profile:full hash:f65d5d33 -->
 ## Issue Tracking with bd (beads)
 
 **IMPORTANT**: This project uses **bd (beads)** for ALL issue tracking. Do NOT use markdown TODOs, task lists, or other tracking methods.
@@ -142,6 +177,16 @@ bd close bd-42 --reason "Completed" --json
    - `bd create "Found bug" --description="Details about what was found" -p 1 --deps discovered-from:<parent-id>`
 5. **Complete**: `bd close <id> --reason "Done"`
 
+### Quality
+- Use `--acceptance` and `--design` fields when creating issues
+- Use `--validate` to check description completeness
+
+### Lifecycle
+- `bd defer <id>` / `bd supersede <id>` for issue management
+- `bd stale` / `bd orphans` / `bd lint` for hygiene
+- `bd human <id>` to flag for human decisions
+- `bd formula list` / `bd mol pour <name>` for structured workflows
+
 ### Auto-Sync
 
 bd automatically syncs via Dolt:
@@ -152,17 +197,17 @@ bd automatically syncs via Dolt:
 
 ### Important Rules
 
-- ✅ Use bd for ALL task tracking
-- ✅ Always use `--json` flag for programmatic use
-- ✅ Link discovered work with `discovered-from` dependencies
-- ✅ Check `bd ready` before asking "what should I work on?"
-- ❌ Do NOT create markdown TODO lists
-- ❌ Do NOT use external issue trackers
-- ❌ Do NOT duplicate tracking systems
+- Use bd for ALL task tracking
+- Always use `--json` flag for programmatic use
+- Link discovered work with `discovered-from` dependencies
+- Check `bd ready` before asking "what should I work on?"
+- Do NOT create markdown TODO lists
+- Do NOT use external issue trackers
+- Do NOT duplicate tracking systems
 
 For more details, see README.md and docs/QUICKSTART.md.
 
-## Landing the Plane (Session Completion)
+## Session Completion
 
 **When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
 
@@ -174,7 +219,7 @@ For more details, see README.md and docs/QUICKSTART.md.
 4. **PUSH TO REMOTE** - This is MANDATORY:
    ```bash
    git pull --rebase
-   bd sync
+   bd dolt push
    git push
    git status  # MUST show "up to date with origin"
    ```
@@ -183,11 +228,9 @@ For more details, see README.md and docs/QUICKSTART.md.
 7. **Hand off** - Provide context for next session
 
 **CRITICAL RULES:**
-- Work is NOT complete until `git push` succeeds AND all CI pipelines pass
-- After every push, run `gh run list` and wait for all pipeline runs to complete successfully
+- Work is NOT complete until `git push` succeeds
 - NEVER stop before pushing - that leaves work stranded locally
 - NEVER say "ready to push when you are" - YOU must push
-- If push fails or CI fails, resolve and retry until everything is green
-- Always verify CI status: `gh run list --limit 5` after pushing
+- If push fails, resolve and retry until it succeeds
 
 <!-- END BEADS INTEGRATION -->
