@@ -24,7 +24,7 @@ from rich.console import Console
 from rich.progress import track
 from rich.prompt import Confirm
 
-__version__ = "0.1.0"
+__version__ = "0.0.2"
 
 console = Console()
 

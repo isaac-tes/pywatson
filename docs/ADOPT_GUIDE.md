@@ -39,13 +39,24 @@ Files are sorted into 9 categories:
 |----------|----------|------------------|
 | **tests** | test_*.py, *_test.py | `tests/` |
 | **notebooks** | *.ipynb | `notebooks/` |
-| **data** | *.csv, *.json, *.h5 | `data/` |
+| **data** | *.csv, *.json, *.h5, *.npz, *.npy, *.nc, *.zarr | `data/` |
 | **scripts** | main.py, analyze.py (with `if __name__=='__main__'`) | `scripts/` |
-| **source** | helper.py, utils.py | `src/{package_name}/` |
-| **docs** | CHANGELOG.md, CONTRIBUTING.md, *.rst | `docs/` |
+| **source** | helper.py, utils.py, package `__init__.py` | `src/{package_name}/` |
+| **docs** | CHANGELOG.md, CONTRIBUTING.md, *.rst, *.tex, **.pdf** | `docs/` |
 | **config** | README.md, LICENSE, *.yml, *.toml, *.ini, `uv.lock`, `.python-version` | Project root |
-| **images** | *.png, *.jpg, *.pdf | `plots/` |
+| **images** | *.png, *.jpg, *.svg, *.eps, *.gif | `plots/` |
 | **other** | Anything else | `_research/` |
+
+> **Note**: `.pdf` files are classified as **docs** (not images) and go to `docs/`.
+
+### What the scanner ignores
+
+The scanner automatically skips:
+
+- **Build / cache directories**: `.git`, `__pycache__`, `.venv`, `venv`, `dist`, `build`, `.tox`, `.mypy_cache`, `.ruff_cache`, `.pytest_cache`, `node_modules`, etc.
+- **IDE config directories**: `.idea`, `.vscode`, `.specstory` — never scanned or copied.
+- **OS metadata files**: `.DS_Store`, `Thumbs.db`, `desktop.ini`, `.gitkeep`, `.keep`.
+- **Compiled bytecode**: `.pyc`, `.pyo`, `.pyd`.
 
 ### 3. Interactive confirmation
 
@@ -74,7 +85,9 @@ Continue? [y/n]
 
 Once confirmed:
 1. Create all pywatson directories
-2. Copy files to their new homes
+2. Copy files to their new homes — using **collision-aware path placement**:
+   - If all files in a category have **unique filenames**, they are placed flat (e.g. `data/results.npz`)
+   - If two or more files share the same name (e.g. thousands of `ens_data.npz` in parameter-named subdirectories), the **full relative path is preserved** (e.g. `data/phi_0.5_N_10/run_001/ens_data.npz`) so nothing is lost
 3. Generate boilerplate: `pyproject.toml`, `.gitignore`, `LICENSE`, etc.
 4. Optionally initialize `uv` for dependency management
 
