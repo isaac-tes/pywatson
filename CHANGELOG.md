@@ -32,6 +32,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+#### `adopt` robustness for real-world messy projects
+- **Collision-aware path placement**: when two or more files in the same category share the
+  same filename (e.g. thousands of `ens_data.npz` files in parameter-named subdirectories
+  such as `phi_0.5_N_10/run_001/ens_data.npz`), `adopt` now automatically falls back to
+  full source-relative path preservation. Normal projects with unique filenames retain flat
+  placement (backward compatible).
+- **IDE config directories ignored**: `.idea/`, `.vscode/`, `.specstory/` added to
+  `ProjectScanner.IGNORE_DIRS` — their contents are never scanned or adopted.
+- **OS metadata files ignored**: new `ProjectScanner.IGNORE_NAMES` frozenset skips
+  `.DS_Store`, `Thumbs.db`, `desktop.ini`, `.gitkeep`, `.keep`.
+- **`__init__.py` classification fixed**: always classified as `source` (marks a Python
+  package), but `tests/__init__.py` (inside a `tests/` directory) correctly stays `tests`.
+- **Corrupt plan-building loop fixed**: previous partial edit had left `dest_file` assignment
+  inside the `except ValueError:` block and left stale dry-run display code referencing
+  undefined variables; rewritten cleanly.
+
+#### Other fixes
 - Docs: Zenodo link text clarity (`docs/citation.md`)
 - Docs: `CLI.md` and `ADOPT_GUIDE.md` updated with new `--docker` / `--zenodo` options
 - CHANGELOG [0.0.1]: corrected project type list (`ml`, `data-analysis` never existed;
@@ -39,8 +56,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Tests
 
-- 18 new tests added: `TestZenodoScaffolding` (12), `TestDockerAndZenodoInAdopt` (4),
-  `TestDockerZenodoCLIFlags` (3), plus `test_zenodo_json_template_renders_valid_json`
+- 25 new tests added: `TestZenodoScaffolding` (12), `TestDockerAndZenodoInAdopt` (4),
+  `TestDockerZenodoCLIFlags` (3), `test_zenodo_json_template_renders_valid_json` (1),
+  `TestProjectScannerAndAdoptFixes` (7 — scanner IDE/OS ignoring, path collision preservation,
+  module package structure, no IDE files adopted)
 - Total: **340 collected, 333 passed, 7 skipped** (up from 315)
 
 ---
