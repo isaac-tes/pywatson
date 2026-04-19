@@ -1128,3 +1128,196 @@ class TestDockerAndZenodoInAdopt:
         assert result.exit_code == 0, result.output
         assert not (output / "Dockerfile").exists()
         assert not (output / ".zenodo.json").exists()
+
+
+class TestProjectScannerAndAdoptFixes:
+    """Tests for ProjectScanner robustness and adopt path-preservation fixes."""
+
+    @pytest.fixture
+    def temp_dir(self):
+        temp = Path(tempfile.mkdtemp())
+        yield temp
+        if temp.exists():
+            shutil.rmtree(temp)
+
+    def _make_messy_source(self, base: Path, name: str = "messy_project") -> Path:
+        """Create a messy (unstructured, no pyproject.toml) project tree."""
+        src = base / name
+        src.mkdir(parents=True)
+        # Scripts at root
+        (src / "run_sim.py").write_text(
+            'import argparse\nif __name__ == "__main__":\n    pass\n'
+        )
+        # Module package
+        pkg = src / "mymodule"
+        pkg.mkdir()
+        (pkg / "__init__.py").write_text("")
+        (pkg / "core.py").write_text("class Solver:\n    pass\n")
+        # Data with nested parameter dirs (like scientific output)
+        data_a = src / "Data" / "phi_0.5_N_10" / "run_001"
+        data_a.mkdir(parents=True)
+        (data_a / "results.npz").write_text("fake npz")
+        data_b = src / "Data" / "phi_0.5_N_10" / "run_002"
+        data_b.mkdir(parents=True)
+        (data_b / "results.npz").write_text("fake npz")
+        # IDE dirs that should be ignored
+        (src / ".idea").mkdir()
+        (src / ".idea" / "workspace.xml").write_text("<workspace/>")
+        (src / ".vscode").mkdir()
+        (src / ".vscode" / "settings.json").write_text("{}")
+        (src / ".specstory").mkdir()
+        (src / ".specstory" / "history.json").write_text("{}")
+        # macOS junk
+        (src / ".DS_Store").write_bytes(b"\x00" * 32)
+        (src / "Data" / ".DS_Store").write_bytes(b"\x00" * 32)
+        # Notebooks
+        nb_dir = src / "notebooks"
+        nb_dir.mkdir()
+        (nb_dir / "analysis.ipynb").write_text('{"cells":[]}')
+        return src
+
+    # ---------------------------------------------------------------------- #
+    # Scanner: IDE dirs and .DS_Store ignored                                 #
+    # ---------------------------------------------------------------------- #
+
+    def test_scanner_ignores_idea_dir(self, temp_dir):
+        """ProjectScanner must not include files from .idea/."""
+        from pywatson.core import ProjectScanner
+
+        src = self._make_messy_source(temp_dir)
+        scanner = ProjectScanner(src)
+        classified = scanner.scan()
+        all_files = [f for files in classified.values() for f in files]
+        idea_files = [f for f in all_files if ".idea" in f.parts]
+        assert idea_files == [], f"Expected no .idea files, got: {idea_files}"
+
+    def test_scanner_ignores_vscode_dir(self, temp_dir):
+        """ProjectScanner must not include files from .vscode/."""
+        from pywatson.core import ProjectScanner
+
+        src = self._make_messy_source(temp_dir)
+        scanner = ProjectScanner(src)
+        classified = scanner.scan()
+        all_files = [f for files in classified.values() for f in files]
+        vscode_files = [f for f in all_files if ".vscode" in f.parts]
+        assert vscode_files == [], f"Expected no .vscode files, got: {vscode_files}"
+
+    def test_scanner_ignores_specstory_dir(self, temp_dir):
+        """ProjectScanner must not include files from .specstory/."""
+        from pywatson.core import ProjectScanner
+
+        src = self._make_messy_source(temp_dir)
+        scanner = ProjectScanner(src)
+        classified = scanner.scan()
+        all_files = [f for files in classified.values() for f in files]
+        specstory_files = [f for f in all_files if ".specstory" in f.parts]
+        assert specstory_files == [], f"Expected no .specstory files, got: {specstory_files}"
+
+    def test_scanner_ignores_ds_store(self, temp_dir):
+        """ProjectScanner must not include .DS_Store files."""
+        from pywatson.core import ProjectScanner
+
+        src = self._make_messy_source(temp_dir)
+        scanner = ProjectScanner(src)
+        classified = scanner.scan()
+        all_files = [f for files in classified.values() for f in files]
+        ds_files = [f for f in all_files if f.name == ".DS_Store"]
+        assert ds_files == [], f"Expected no .DS_Store files, got: {ds_files}"
+
+    # ---------------------------------------------------------------------- #
+    # Adopt: path structure preserved (no flattening / no collisions)         #
+    # ---------------------------------------------------------------------- #
+
+    def test_adopt_preserves_data_subdirectory_structure(self, temp_dir):
+        """adopt must preserve nested data paths so parameter dirs are not collapsed."""
+        from click.testing import CliRunner
+
+        from pywatson.core import cli
+
+        src = self._make_messy_source(temp_dir)
+        output = temp_dir / "adopted"
+        runner = CliRunner()
+        result = runner.invoke(
+            cli,
+            [
+                "adopt",
+                str(src),
+                "--project-name",
+                "adopted",
+                "--output-path",
+                str(temp_dir),
+                "--auto",
+                "--no-uv",
+                "--copy",
+            ],
+        )
+        assert result.exit_code == 0, result.output
+        # Both run_001 and run_002 results.npz must be present with distinct paths
+        npz_files = list(output.rglob("results.npz"))
+        assert len(npz_files) == 2, (
+            f"Expected 2 distinct results.npz files, got {len(npz_files)}: {npz_files}"
+        )
+        # Their paths must differ (not collapsed to same file)
+        assert npz_files[0] != npz_files[1]
+
+    def test_adopt_preserves_module_package_structure(self, temp_dir):
+        """adopt must keep __init__.py and sibling source files in the same dir."""
+        from click.testing import CliRunner
+
+        from pywatson.core import cli
+
+        src = self._make_messy_source(temp_dir)
+        output = temp_dir / "adopted"
+        runner = CliRunner()
+        result = runner.invoke(
+            cli,
+            [
+                "adopt",
+                str(src),
+                "--project-name",
+                "adopted",
+                "--output-path",
+                str(temp_dir),
+                "--auto",
+                "--no-uv",
+                "--copy",
+            ],
+        )
+        assert result.exit_code == 0, result.output
+        # core.py and __init__.py from mymodule/ must both be present
+        source_files = list(output.rglob("core.py"))
+        assert source_files, "core.py missing from adopted project"
+        # __init__.py must be adjacent to core.py (same directory)
+        core_parent = source_files[0].parent
+        assert (core_parent / "__init__.py").exists(), (
+            f"__init__.py not found next to core.py in {core_parent}"
+        )
+
+    def test_adopt_does_not_include_ide_files(self, temp_dir):
+        """adopt must not copy .idea / .vscode / .specstory files into target."""
+        from click.testing import CliRunner
+
+        from pywatson.core import cli
+
+        src = self._make_messy_source(temp_dir)
+        output = temp_dir / "adopted"
+        runner = CliRunner()
+        result = runner.invoke(
+            cli,
+            [
+                "adopt",
+                str(src),
+                "--project-name",
+                "adopted",
+                "--output-path",
+                str(temp_dir),
+                "--auto",
+                "--no-uv",
+                "--copy",
+            ],
+        )
+        assert result.exit_code == 0, result.output
+        idea_files = list(output.rglob(".idea/**/*"))
+        vscode_files = list(output.rglob(".vscode/**/*"))
+        assert not idea_files, f".idea files adopted: {idea_files}"
+        assert not vscode_files, f".vscode files adopted: {vscode_files}"

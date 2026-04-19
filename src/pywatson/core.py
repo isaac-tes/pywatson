@@ -801,9 +801,17 @@ class ProjectScanner:
             "dist",
             "build",
             "site-packages",
+            # IDE / editor config directories
+            ".idea",
+            ".vscode",
+            ".specstory",
         }
     )
     IGNORE_SUFFIXES: frozenset[str] = frozenset({".pyc", ".pyo", ".pyd"})
+    # OS/editor generated file names to always skip
+    IGNORE_NAMES: frozenset[str] = frozenset(
+        {".DS_Store", "Thumbs.db", "desktop.ini", ".gitkeep", ".keep"}
+    )
 
     def __init__(self, source_path: Path) -> None:
         self.source_path = Path(source_path).resolve()
@@ -844,6 +852,8 @@ class ProjectScanner:
             ):
                 continue
             if path.suffix in self.IGNORE_SUFFIXES:
+                continue
+            if path.name in self.IGNORE_NAMES:
                 continue
             yield path
 
@@ -908,6 +918,10 @@ class ProjectScanner:
         # Directory-based test detection: any parent named "tests" or "test"
         if any(part in {"tests", "test"} for part in path.parts):
             return "tests"
+        # __init__.py marks a Python package boundary; always treat as source
+        # (checked after directory context so tests/__init__.py stays as tests)
+        if name == "__init__.py":
+            return "source"
         # Name-based test detection
         if name.startswith("test_") or name.endswith("_test.py") or name == "conftest.py":
             return "tests"
@@ -1831,6 +1845,9 @@ def adopt_command(
                 new_sub = click.prompt("  New target (relative to project root)")
                 target_dir = dest_root / new_sub
 
+        # First pass: collect valid files and their flat (name-only) destinations.
+        # This preserves backward-compatible flat placement for typical projects.
+        candidates: list[tuple[Path, Path]] = []  # (src_file, flat_dest)
         for f in files:
             if f.name in _REGENERATED_FILES:
                 skipped_regen.append(f.name)
@@ -1841,9 +1858,20 @@ def adopt_command(
                 continue  # this file is already inside the destination
             except ValueError:
                 pass
-            # Flatten: place file directly in target_dir (no source subdirectory preserved)
-            dest_file = target_dir / f.name
-            plan.append((f, dest_file))
+            candidates.append((f, target_dir / f.name))
+
+        # Detect name collisions within this category.  When two or more source
+        # files share the same filename (e.g. thousands of ``results.npz`` in
+        # parameter-named subdirectories), fall back to path-preserving placement
+        # so every file gets a unique destination.
+        flat_dests = [dst for _, dst in candidates]
+        has_collision = len(flat_dests) != len(set(flat_dests))
+        for src_f, flat_dst in candidates:
+            if has_collision:
+                dest_file = target_dir / src_f.relative_to(source)
+            else:
+                dest_file = flat_dst
+            plan.append((src_f, dest_file))
 
     # ------------------------------------------------------------------ dry run output
     if dry_run:
