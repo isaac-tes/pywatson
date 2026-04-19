@@ -1,6 +1,9 @@
 # PyWatson - A Python scientific project managment tool
 # Development environment ignore patterns
 
+# Claude Code — local personal settings (project settings.json is committed)
+.claude/settings.local.json
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
