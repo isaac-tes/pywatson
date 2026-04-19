@@ -51,8 +51,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Other fixes
 - Docs: Zenodo link text clarity (`docs/citation.md`)
 - Docs: `CLI.md` and `ADOPT_GUIDE.md` updated with new `--docker` / `--zenodo` options
+- Docs: `ADOPT_GUIDE.md` classification table corrected — `.pdf` goes to `docs/` not `plots/`;
+  added scanner ignore rules and collision-aware placement explanation
 - CHANGELOG [0.0.1]: corrected project type list (`ml`, `data-analysis` never existed;
   the third type is `full`) and removed mention of nonexistent `--no-prompt` flag
+- Version string in `core.py` and `__init__.py` corrected from stale values to `"0.0.2"`
 
 ### Tests
 
