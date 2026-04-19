@@ -860,3 +860,271 @@ class TestDockerScaffolding:
 
         content = (workflows_dir / "docker-publish.yml").read_text()
         assert "ghcr.io" in content
+
+
+# ===========================================================================
+# Zenodo scaffolding
+# ===========================================================================
+
+
+class TestZenodoScaffolding:
+    """Tests for Zenodo metadata scaffolding functionality."""
+
+    @pytest.fixture
+    def temp_project_dir(self):
+        """Create a temporary directory for Zenodo test projects."""
+        temp_dir = Path(tempfile.mkdtemp())
+        yield temp_dir
+        if temp_dir.exists():
+            shutil.rmtree(temp_dir)
+
+    @pytest.fixture
+    def project_path(self, temp_project_dir):
+        """Create a project directory for Zenodo tests."""
+        path = temp_project_dir / "zenodo_test_project"
+        path.mkdir()
+        return path
+
+    # ------------------------------------------------------------------
+    # Scaffolder initialisation
+    # ------------------------------------------------------------------
+
+    def test_zenodo_flag_defaults_false(self, project_path):
+        """Test that the zenodo flag defaults to False."""
+        scaffolder = ProjectScaffolder("zenodo-test", project_path)
+        assert scaffolder.zenodo is False
+
+    def test_zenodo_flag_true(self, project_path):
+        """Test that zenodo=True is stored on the scaffolder."""
+        scaffolder = ProjectScaffolder("zenodo-test", project_path, zenodo=True)
+        assert scaffolder.zenodo is True
+
+    # ------------------------------------------------------------------
+    # File creation
+    # ------------------------------------------------------------------
+
+    def test_create_zenodo_files_creates_zenodo_json(self, project_path):
+        """Test that .zenodo.json is created in the project root."""
+        scaffolder = ProjectScaffolder("zenodo-test", project_path)
+        scaffolder.create_zenodo_files("Test Author", "test@example.com", "A test project")
+
+        assert (project_path / ".zenodo.json").exists()
+
+    def test_zenodo_json_is_valid_json(self, project_path):
+        """Test that .zenodo.json renders as valid JSON."""
+        import json
+
+        scaffolder = ProjectScaffolder("zenodo-test", project_path)
+        scaffolder.create_zenodo_files("Test Author", "test@example.com", "A test project")
+
+        content = (project_path / ".zenodo.json").read_text()
+        parsed = json.loads(content)
+        assert isinstance(parsed, dict)
+
+    def test_zenodo_json_contains_required_fields(self, project_path):
+        """Test that .zenodo.json contains title, creators, license, upload_type."""
+        import json
+
+        scaffolder = ProjectScaffolder(
+            "my-analysis", project_path, license_type="MIT"
+        )
+        scaffolder.create_zenodo_files("Jane Doe", "jane@lab.org", "My analysis project")
+
+        parsed = json.loads((project_path / ".zenodo.json").read_text())
+        assert "title" in parsed
+        assert "creators" in parsed
+        assert "license" in parsed
+        assert "upload_type" in parsed
+        assert parsed["upload_type"] == "software"
+
+    def test_zenodo_json_creator_name(self, project_path):
+        """Test that the creator name in .zenodo.json matches the author."""
+        import json
+
+        scaffolder = ProjectScaffolder("zenodo-test", project_path)
+        scaffolder.create_zenodo_files("Jane Doe", "jane@lab.org")
+
+        parsed = json.loads((project_path / ".zenodo.json").read_text())
+        assert parsed["creators"][0]["name"] == "Jane Doe"
+
+    def test_zenodo_json_title_matches_project(self, project_path):
+        """Test that the title in .zenodo.json matches the project name."""
+        import json
+
+        scaffolder = ProjectScaffolder("my-special-project", project_path)
+        scaffolder.create_zenodo_files("Test Author", "test@example.com")
+
+        parsed = json.loads((project_path / ".zenodo.json").read_text())
+        assert parsed["title"] == "my-special-project"
+
+    def test_zenodo_json_license_matches_scaffolder(self, project_path):
+        """Test that the license field in .zenodo.json reflects the chosen license."""
+        import json
+
+        scaffolder = ProjectScaffolder(
+            "zenodo-test", project_path, license_type="Apache-2.0"
+        )
+        scaffolder.create_zenodo_files("Test Author", "test@example.com")
+
+        parsed = json.loads((project_path / ".zenodo.json").read_text())
+        assert "apache" in parsed["license"].lower()
+
+    def test_zenodo_json_access_right_open(self, project_path):
+        """Test that the access_right is 'open' by default."""
+        import json
+
+        scaffolder = ProjectScaffolder("zenodo-test", project_path)
+        scaffolder.create_zenodo_files("Test Author", "test@example.com")
+
+        parsed = json.loads((project_path / ".zenodo.json").read_text())
+        assert parsed.get("access_right") == "open"
+
+    # ------------------------------------------------------------------
+    # Integration: zenodo via full pipeline
+    # ------------------------------------------------------------------
+
+    def test_zenodo_flag_in_run_scaffolder(self, temp_project_dir):
+        """Test that zenodo=True in the scaffolder param is reflected in .zenodo flag."""
+        project_path = temp_project_dir / "zenodo_full"
+        project_path.mkdir()
+
+        scaffolder = ProjectScaffolder(
+            "zenodo-full",
+            project_path,
+            zenodo=True,
+        )
+        assert scaffolder.zenodo is True
+        scaffolder.create_zenodo_files("Full Author", "full@example.com", "Full desc")
+        assert (project_path / ".zenodo.json").exists()
+
+
+# ===========================================================================
+# Docker in adopt command (CLI integration)
+# ===========================================================================
+
+
+class TestDockerAndZenodoInAdopt:
+    """Tests for --docker and --zenodo flags in the adopt command."""
+
+    @pytest.fixture
+    def temp_dir(self):
+        """Create a temporary workspace for adopt tests."""
+        temp = Path(tempfile.mkdtemp())
+        yield temp
+        if temp.exists():
+            shutil.rmtree(temp)
+
+    def _make_source(self, base: Path, name: str = "old_project") -> Path:
+        """Create a minimal source project to adopt."""
+        src = base / name
+        src.mkdir(parents=True)
+        (src / "main.py").write_text('"""Main script."""\nprint("hello")\n')
+        return src
+
+    def test_adopt_docker_flag_creates_dockerfile(self, temp_dir):
+        """adopt --docker should create a Dockerfile in the new project."""
+        from click.testing import CliRunner
+
+        from pywatson.core import cli
+
+        source = self._make_source(temp_dir)
+        output = temp_dir / "adopted"
+        runner = CliRunner()
+        result = runner.invoke(
+            cli,
+            [
+                "adopt",
+                str(source),
+                "--project-name",
+                "adopted",
+                "--output-path",
+                str(temp_dir),
+                "--auto",
+                "--no-uv",
+                "--docker",
+            ],
+        )
+        assert result.exit_code == 0, result.output
+        assert (output / "Dockerfile").exists()
+        assert (output / "docker-compose.yml").exists()
+        assert (output / ".dockerignore").exists()
+
+    def test_adopt_zenodo_flag_creates_zenodo_json(self, temp_dir):
+        """adopt --zenodo should create a .zenodo.json in the new project."""
+        from click.testing import CliRunner
+
+        from pywatson.core import cli
+
+        source = self._make_source(temp_dir)
+        output = temp_dir / "adopted_zen"
+        runner = CliRunner()
+        result = runner.invoke(
+            cli,
+            [
+                "adopt",
+                str(source),
+                "--project-name",
+                "adopted_zen",
+                "--output-path",
+                str(temp_dir),
+                "--auto",
+                "--no-uv",
+                "--zenodo",
+            ],
+        )
+        assert result.exit_code == 0, result.output
+        assert (output / ".zenodo.json").exists()
+
+    def test_adopt_both_docker_and_zenodo(self, temp_dir):
+        """adopt --docker --zenodo should create both Dockerfile and .zenodo.json."""
+        from click.testing import CliRunner
+
+        from pywatson.core import cli
+
+        source = self._make_source(temp_dir)
+        output = temp_dir / "adopted_both"
+        runner = CliRunner()
+        result = runner.invoke(
+            cli,
+            [
+                "adopt",
+                str(source),
+                "--project-name",
+                "adopted_both",
+                "--output-path",
+                str(temp_dir),
+                "--auto",
+                "--no-uv",
+                "--docker",
+                "--zenodo",
+            ],
+        )
+        assert result.exit_code == 0, result.output
+        assert (output / "Dockerfile").exists()
+        assert (output / ".zenodo.json").exists()
+
+    def test_adopt_no_docker_no_zenodo_by_default(self, temp_dir):
+        """adopt without flags should not create Docker or Zenodo files."""
+        from click.testing import CliRunner
+
+        from pywatson.core import cli
+
+        source = self._make_source(temp_dir)
+        output = temp_dir / "adopted_plain"
+        runner = CliRunner()
+        result = runner.invoke(
+            cli,
+            [
+                "adopt",
+                str(source),
+                "--project-name",
+                "adopted_plain",
+                "--output-path",
+                str(temp_dir),
+                "--auto",
+                "--no-uv",
+            ],
+        )
+        assert result.exit_code == 0, result.output
+        assert not (output / "Dockerfile").exists()
+        assert not (output / ".zenodo.json").exists()

@@ -127,6 +127,7 @@ class ProjectScaffolder:
         linting_mode: str = "minimal",
         type_checker: str = "ty",
         docker: bool = False,
+        zenodo: bool = False,
     ) -> None:
         self.project_name = project_name
         self.project_path = project_path
@@ -137,6 +138,7 @@ class ProjectScaffolder:
         self.linting_mode = linting_mode
         self.type_checker = type_checker
         self.docker = docker
+        self.zenodo = zenodo
 
         # Validate project_type
         if self.project_type not in PROJECT_TYPES:
@@ -663,6 +665,43 @@ class ProjectScaffolder:
             )
 
     # ------------------------------------------------------------------
+    # Zenodo metadata
+    # ------------------------------------------------------------------
+
+    def create_zenodo_files(
+        self,
+        author_name: str = "",
+        author_email: str = "",
+        description: str = "",
+    ) -> None:
+        """Create a .zenodo.json metadata file for Zenodo GitHub integration.
+
+        Generates a ``.zenodo.json`` in the project root.  When the GitHub
+        repository is linked to Zenodo, this file is read automatically on
+        each release to populate deposit metadata (title, authors, license,
+        keywords, etc.).
+
+        Args:
+            author_name: Author's full name.
+            author_email: Author's email address.
+            description: Short project description (used as Zenodo deposit
+                description when provided).
+        """
+        console.print("Creating Zenodo metadata file...", style="bold blue")
+
+        context = self._base_context(author_name, author_email)
+        context["description"] = description
+
+        zenodo_content = self._render_template("zenodo.json.jinja2", **context)
+        (self.project_path / ".zenodo.json").write_text(zenodo_content)
+
+        console.print(
+            "  Created .zenodo.json — link your GitHub repo to Zenodo to mint a DOI "
+            "automatically on each release.",
+            style="dim",
+        )
+
+    # ------------------------------------------------------------------
     # Notebook
     # ------------------------------------------------------------------
 
@@ -1043,6 +1082,7 @@ def _run_scaffolder(
     env_file: str | None,
     force: bool,
     docker: bool,
+    zenodo: bool = False,
 ) -> None:
     """Run the full ProjectScaffolder pipeline with the given parameters."""
     console.print(f"Creating project: [bold blue]{project_name}[/bold blue]")
@@ -1052,6 +1092,7 @@ def _run_scaffolder(
     console.print(f"  Linting      : [cyan]{linting_mode}[/cyan]")
     console.print(f"  Type checker : [cyan]{type_checker}[/cyan]")
     console.print(f"  Docker       : [cyan]{docker}[/cyan]")
+    console.print(f"  Zenodo       : [cyan]{zenodo}[/cyan]")
     console.print(f"  Working dir  : [dim]{Path.cwd()}[/dim]")
 
     project_path = Path(path) / project_name
@@ -1104,6 +1145,7 @@ def _run_scaffolder(
         linting_mode=linting_mode,
         type_checker=type_checker,
         docker=docker,
+        zenodo=zenodo,
     )
 
     try:
@@ -1147,6 +1189,10 @@ def _run_scaffolder(
         # 13. Docker files (optional, any project type)
         if docker:
             scaffolder.create_docker_files(author_name, author_email)
+
+        # 14. Zenodo metadata (optional, any project type)
+        if zenodo:
+            scaffolder.create_zenodo_files(author_name, author_email, description)
 
         console.print("\nProject created successfully!", style="bold green")
         console.print(f"\nProject location: [blue]{project_path.absolute()}[/blue]")
@@ -1242,7 +1288,13 @@ def _run_scaffolder(
     "--docker",
     is_flag=True,
     default=False,
-    help="Scaffold Docker + docker-compose files for Zenodo reproducibility.",
+    help="Scaffold Docker + docker-compose files for container reproducibility.",
+)
+@click.option(
+    "--zenodo",
+    is_flag=True,
+    default=False,
+    help="Generate .zenodo.json metadata for Zenodo GitHub integration (auto-DOI on release).",
 )
 @click.pass_context
 def cli(
@@ -1260,6 +1312,7 @@ def cli(
     env_file: str | None,
     force: bool,
     docker: bool,
+    zenodo: bool,
 ) -> None:
     """PyWatson -- Python scientific project manager.
 
@@ -1290,6 +1343,7 @@ def cli(
         env_file=env_file,
         force=force,
         docker=docker,
+        zenodo=zenodo,
     )
 
 
@@ -1360,6 +1414,9 @@ def init_project() -> None:
                 f"[yellow]Warning: {env_file_input} not found, ignoring.[/yellow]"
             )
     docker = click.confirm("Include Docker files? (default: No)", default=False)
+    zenodo = click.confirm(
+        "Generate .zenodo.json for Zenodo DOI integration? (default: No)", default=False
+    )
 
     console.print("\n[bold]Summary:[/bold]")
     console.print(f"  Name      : [cyan]{project_name}[/cyan]")
@@ -1371,6 +1428,7 @@ def init_project() -> None:
     console.print(f"  Linting   : [cyan]{linting_mode}[/cyan]")
     console.print(f"  Checker   : [cyan]{type_checker}[/cyan]")
     console.print(f"  Docker    : [cyan]{'yes' if docker else 'no'}[/cyan]")
+    console.print(f"  Zenodo    : [cyan]{'yes' if zenodo else 'no'}[/cyan]")
     console.print(f"  Path      : [dim]{path}[/dim]")
     console.print()
     if not click.confirm("Continue?", default=True):
@@ -1391,6 +1449,7 @@ def init_project() -> None:
         env_file=env_file,
         force=False,
         docker=docker,
+        zenodo=zenodo,
     )
 
 
@@ -1639,6 +1698,18 @@ def summary_command(subdir: str | None, recursive: bool) -> None:
     show_default=True,
     help="Target Python version (e.g. 3.11, 3.12).",
 )
+@click.option(
+    "--docker",
+    is_flag=True,
+    default=False,
+    help="Scaffold Docker + docker-compose files for container reproducibility.",
+)
+@click.option(
+    "--zenodo",
+    is_flag=True,
+    default=False,
+    help="Generate .zenodo.json metadata for Zenodo GitHub integration (auto-DOI on release).",
+)
 def adopt_command(
     source_path: str,
     project_name: str | None,
@@ -1653,6 +1724,8 @@ def adopt_command(
     project_type: str,
     license_type: str,
     python_version: str,
+    docker: bool,
+    zenodo: bool,
 ) -> None:
     """Adopt an existing unstructured project into a pywatson layout.
 
@@ -1788,6 +1861,12 @@ def adopt_command(
 
     # ------------------------------------------------------------------ confirm
     if not auto:
+        docker = docker or click.confirm(
+            "\nInclude Docker files?", default=False
+        )
+        zenodo = zenodo or click.confirm(
+            "Generate .zenodo.json for Zenodo DOI integration?", default=False
+        )
         if not Confirm.ask(f"\nCreate project at {dest_root}?"):
             console.print("Aborted.")
             return
@@ -1799,6 +1878,8 @@ def adopt_command(
         project_type=project_type,
         license_type=license_type,
         python_version=python_version,
+        docker=docker,
+        zenodo=zenodo,
     )
     scaffolder.create_project_structure()
 
@@ -1846,6 +1927,12 @@ def adopt_command(
     if not no_uv:
         console.print("\n[bold blue]Initialising uv project...[/bold blue]")
         scaffolder.initialize_uv_project()
+
+    # ------------------------------------------------------------------ optional docker / zenodo
+    if docker:
+        scaffolder.create_docker_files(author_name, author_email)
+    if zenodo:
+        scaffolder.create_zenodo_files(author_name, author_email, description)
 
     # ------------------------------------------------------------------ finish
     console.print(f"\n[bold green]✓ Project adopted at {dest_root}[/bold green]")

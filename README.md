@@ -31,8 +31,10 @@ management, HDF5 data handling, and smart caching.
 - 📊 **Dashboard** — `pywatson status` shows dirs, data, git state
 - 📦 **Adopt existing** — `pywatson adopt` scans & reorganizes messy projects
   (see [docs/ADOPT_GUIDE.md](docs/ADOPT_GUIDE.md))
-- 🐳 **Docker & Zenodo** — `--docker` adds reproducibility bundle
+- 🐳 **Docker** — `--docker` scaffolds Dockerfile + docker-compose for container reproducibility
   (see [docs/DOCKER_GUIDE.md](docs/DOCKER_GUIDE.md))
+- 🔖 **Zenodo** — `--zenodo` generates `.zenodo.json` for auto-DOI on every GitHub release
+  (see [docs/ZENODO.md](docs/ZENODO.md))
 
 ## 🚀 Quick Start
 
@@ -193,7 +195,7 @@ uv build                         # package
 | `src/pywatson/core.py` | `ProjectScaffolder` + Click CLI |
 | `src/pywatson/utils.py` | PyWatson utilities (copied into generated projects) |
 | `src/pywatson/templates/` | Jinja2 templates for generated project files |
-| `tests/` | pytest suite (220+ tests) |
+| `tests/` | pytest suite (330+ tests) |
 
 ## 🔄 vs DrWatson.jl
 

@@ -374,3 +374,27 @@ class TestTemplateRendering:
         assert "test_project" in cells_source
         assert "Test Project" in cells_source
         assert "PyWatson" in cells_source
+
+    def test_zenodo_json_template_renders_valid_json(self, jinja_env, template_context):
+        """Test that zenodo.json.jinja2 renders as valid JSON with required fields."""
+        import json
+
+        context = dict(template_context)
+        context["description"] = "A scientific computing project"
+
+        template = jinja_env.get_template("zenodo.json.jinja2")
+        content = template.render(**context)
+
+        try:
+            parsed = json.loads(content)
+        except json.JSONDecodeError as e:
+            pytest.fail(f"Template zenodo.json.jinja2 renders invalid JSON: {e}")
+
+        assert "title" in parsed
+        assert parsed["title"] == "test-project"
+        assert "creators" in parsed
+        assert parsed["creators"][0]["name"] == "Test Author"
+        assert "license" in parsed
+        assert "upload_type" in parsed
+        assert parsed["upload_type"] == "software"
+        assert parsed["access_right"] == "open"

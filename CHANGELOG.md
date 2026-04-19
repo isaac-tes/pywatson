@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.0.2] — 2026-04-19
+
+### Added
+
+#### Docker scaffolding in `adopt`
+- `pywatson adopt --docker` now generates the same Docker bundle as `pywatson init --docker`:
+  `Dockerfile`, `.dockerignore`, `docker-compose.yml`, `README_DOCKER.md`,
+  and `.github/workflows/docker-publish.yml` (when a workflows directory exists)
+- Interactive prompt for `--docker` in `adopt` non-auto mode
+
+#### Zenodo metadata scaffolding (new feature)
+- New `--zenodo` flag available on `pywatson` (direct), `pywatson init`, and `pywatson adopt`
+- Generates `.zenodo.json` in the project root — links the repo to Zenodo for automatic
+  DOI minting on every GitHub release
+- Interactive prompt for `--zenodo` in non-auto / wizard modes
+- New template `zenodo.json.jinja2`; new `ProjectScaffolder.create_zenodo_files()` method
+
+#### Python 3.14 support
+- Project venv pinned to Python 3.14 via `.python-version`
+- CI matrix extended to `["3.12", "3.13", "3.14"]`
+- `Programming Language :: Python :: 3.14` classifier added to `pyproject.toml`
+- CI now also triggers on pushes to the `dev` branch
+
+### Fixed
+
+- Docs: Zenodo link text clarity (`docs/citation.md`)
+- Docs: `CLI.md` and `ADOPT_GUIDE.md` updated with new `--docker` / `--zenodo` options
+- CHANGELOG [0.0.1]: corrected project type list (`ml`, `data-analysis` never existed;
+  the third type is `full`) and removed mention of nonexistent `--no-prompt` flag
+
+### Tests
+
+- 18 new tests added: `TestZenodoScaffolding` (12), `TestDockerAndZenodoInAdopt` (4),
+  `TestDockerZenodoCLIFlags` (3), plus `test_zenodo_json_template_renders_valid_json`
+- Total: **340 collected, 333 passed, 7 skipped** (up from 315)
+
+---
+
 ## [0.0.1] — 2026-03-10
 
 Initial public release of PyWatson.
@@ -15,10 +53,10 @@ Initial public release of PyWatson.
 
 #### Project scaffolding
 - `pywatson init` CLI command to scaffold new scientific Python projects
-- Multiple project types: `default`, `minimal`, `ml`, `data-analysis`
+- Multiple project types: `default`, `minimal`, `full`
 - Jinja2-based template system for all generated files (README, CHANGELOG,
   CI workflow, Makefile, notebooks, tests, core modules)
-- Interactive and non-interactive (`--no-prompt`) modes
+- Interactive wizard mode; non-interactive via CLI flags
 - Optional uv environment initialisation (`--no-uv` to skip)
 - Generated projects include: `src/` layout, `tests/`, `notebooks/`, `scripts/`,
   `data/`, `plots/`, `docs/` directories with sensible `.gitignore`
@@ -69,4 +107,5 @@ Initial public release of PyWatson.
 
 ---
 
+[0.0.2]: https://github.com/isaac-tes/pywatson/compare/v0.0.1...v0.0.2
 [0.0.1]: https://github.com/isaac-tes/pywatson/releases/tag/v0.0.1

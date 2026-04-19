@@ -163,7 +163,7 @@ nav:
   - Resources:
       - Makefile Guide: MAKEFILE_GUIDE.md
       - Docker Guide: DOCKER_GUIDE.md
-      - Zenodo & Citation: ZENODO.md
+      - Zenodo Guide: ZENODO.md
       - Citation: citation.md
   - API Reference:
       - Overview: api/index.md

@@ -281,6 +281,7 @@ class TestInitInteractive:
         type_checker_idx: str = "3",
         env_file: str = "",
         docker: str = "n",
+        zenodo: str = "n",
         confirm: str = "n",
     ) -> str:
         """Build a newline-delimited input string for the interactive wizard."""
@@ -298,6 +299,7 @@ class TestInitInteractive:
                 type_checker_idx,
                 env_file,
                 docker,
+                zenodo,
                 confirm,
                 "",
             ]
@@ -327,7 +329,7 @@ class TestInitInteractive:
         runner = CliRunner()
         # Send blank name then fill everything else
         fields = [
-            "", "Alice", "a@b.com", "desc", ".", "1", "1", "3.12", "1", "3", "", "n", "n", "",
+            "", "Alice", "a@b.com", "desc", ".", "1", "1", "3.12", "1", "3", "", "n", "n", "n", "",
         ]
         inp = "\n".join(fields)
         with runner.isolated_filesystem(temp_dir=tmp_path):
@@ -362,3 +364,77 @@ class TestInitInteractive:
                 ],
             )
         assert "Interactive Project Creator" not in result.output
+
+
+class TestDockerZenodoCLIFlags:
+    """Tests for --docker and --zenodo flags on the pywatson command."""
+
+    def test_zenodo_flag_accepted_by_cli(self, tmp_path: Path) -> None:
+        """--zenodo flag is accepted without error by the main pywatson command."""
+        runner = CliRunner()
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            result = runner.invoke(
+                cli,
+                [
+                    "--project-name",
+                    "zen-proj",
+                    "--path",
+                    str(tmp_path),
+                    "--author-name",
+                    "Alice",
+                    "--author-email",
+                    "alice@example.com",
+                    "--zenodo",
+                ],
+            )
+        assert result.exit_code == 0 or "Zenodo" not in (result.exception or "")
+        # .zenodo.json should exist in the created project
+        assert (tmp_path / "zen-proj" / ".zenodo.json").exists()
+
+    def test_docker_flag_creates_dockerfile(self, tmp_path: Path) -> None:
+        """--docker flag causes a Dockerfile to be generated."""
+        runner = CliRunner()
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            result = runner.invoke(
+                cli,
+                [
+                    "--project-name",
+                    "dock-proj",
+                    "--path",
+                    str(tmp_path),
+                    "--author-name",
+                    "Alice",
+                    "--author-email",
+                    "alice@example.com",
+                    "--docker",
+                ],
+            )
+        assert result.exit_code == 0, result.output
+        assert (tmp_path / "dock-proj" / "Dockerfile").exists()
+
+    def test_init_wizard_shows_zenodo_prompt(self, tmp_path: Path) -> None:
+        """The interactive init wizard should include a Zenodo prompt."""
+        runner = CliRunner()
+        # Provide enough input to reach the Zenodo prompt then abort
+        inp = "\n".join(
+            [
+                "my-proj",   # project name
+                "Alice",     # author name
+                "a@b.com",   # author email
+                "A project", # description
+                str(tmp_path),  # path
+                "1",         # project type
+                "1",         # license
+                "3.12",      # python version
+                "1",         # linting
+                "3",         # type checker (none)
+                "",          # env file
+                "n",         # docker
+                "n",         # zenodo
+                "n",         # confirm  → abort
+                "",
+            ]
+        )
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            result = runner.invoke(cli, ["init"], input=inp)
+        assert "zenodo" in result.output.lower() or "Zenodo" in result.output

@@ -9,7 +9,7 @@ PyWatson is currently available on GitHub: [https://github.com/isaac-tes/pywatso
 > **Note:** A citable release with a persistent DOI (via Zenodo) will be added
 > once the first stable version is published. This page will be updated with
 > BibTeX, APA, and Chicago-style entries at that time. See
-> [Zenodo & Citation](ZENODO.md) for details on how the Zenodo integration is
+> [Zenodo Guide](ZENODO.md) for details on how the Zenodo integration is
 > set up.
 
 ## Current citation (software)
