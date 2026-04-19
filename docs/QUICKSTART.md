@@ -481,59 +481,138 @@ print("Plot saved.")
 
 ## CLI Quick Reference
 
+### `pywatson` — non-interactive (all flags up-front)
+
+```bash
+# Minimal (author info from git config)
+pywatson --project-name my-analysis
+
+# Full specification
+pywatson --project-name my-analysis \
+  --author-name "Jane Doe" --author-email "jane@uni.edu" \
+  --description "Spin-chain Monte Carlo" \
+  --project-type full \
+  --license BSD-3-Clause \
+  --python-version 3.12 \
+  --linting strict \
+  --type-checker ty \
+  --docker \
+  --zenodo
+
+# Available options
+  --project-name TEXT               Project name (required)
+  -p, --path PATH                   Parent directory  [default: .]
+  --author-name TEXT                [default: git config user.name]
+  --author-email TEXT               [default: git config user.email]
+  --description TEXT                Short description
+  -t, --project-type [default|minimal|full]  [default: default]
+  --license [MIT|BSD-3-Clause|Apache-2.0|ISC]  [default: MIT]
+  --python-version TEXT             [default: 3.12]
+  --linting [minimal|strict]        [default: minimal]
+  --type-checker [ty|mypy|none]     [default: ty]
+  --env-file PATH                   environment.yml to seed dependencies
+  --force                           Overwrite existing directory
+  --docker                          Add Dockerfile, docker-compose, CI publish workflow
+  --zenodo                          Add .zenodo.json for automatic DOI minting
+  --version                         Show version
+  --help
 ```
-pywatson [OPTIONS]
+
+### `pywatson init` — interactive wizard
+
+```bash
 pywatson init
-
-Options (for non-interactive use):
-  --project-name TEXT  Name of the new project (required for creation)
-  --version            Show the version and exit.
-  --help               Show this message and exit.
-  (+ all scaffolding flags: --author-name, --path, --project-type, ...)
-
-Commands:
-  init     Create a new project interactively (wizard mode).
-  status   Show an overview of the current PyWatson project.
-  sweep    Print filenames for a parameter sweep.
-  summary  Summarise HDF5 data files in the project data directory.
+# Prompts for: name, author, email, description, path, project type,
+# license, Python version, linting mode, type checker, env file,
+# docker (y/n), zenodo (y/n), then shows a summary before proceeding.
 ```
 
-```
-pywatson init [OPTIONS] PROJECT_NAME
+### `pywatson adopt` — bring an existing project into PyWatson layout
 
-Options:
-  -p, --path PATH                  Directory to create the project in.  [default: .]
-  --author-name TEXT               Author name.  [default: git config user.name]
-  --author-email TEXT              Author email.  [default: git config user.email]
-  --description TEXT               Short project description.
-  -t, --project-type [default|minimal|full]
-                                   Project structure type.  [default: default]
+```bash
+# Dry-run first — shows what would move without touching anything
+pywatson adopt /path/to/my-old-project --dry-run
+
+# Interactive wizard (prompts for name, type, docker, zenodo, etc.)
+pywatson adopt /path/to/my-old-project
+
+# Fully unattended (CI-friendly)
+pywatson adopt /path/to/my-old-project \
+  --auto \
+  --project-name my-old-project \
+  --docker \
+  --zenodo
+
+# Available options
+  source_path PATH        Project directory to adopt  [default: .]
+  --auto                  Skip all interactive prompts
+  --project-name TEXT     Override inferred project name
+  --project-type [default|minimal|full]  [default: default]
+  --author-name TEXT      [default: git config user.name]
+  --author-email TEXT     [default: git config user.email]
+  --description TEXT
   --license [MIT|BSD-3-Clause|Apache-2.0|ISC]
-                                   License for the generated project.  [default: MIT]
-  --python-version TEXT            Target Python version (e.g. 3.11, 3.12).  [default: 3.12]
-  --linting [minimal|strict]       Ruff ruleset.  [default: minimal]
-  --type-checker [ty|mypy|none]    Type checker for the generated project.  [default: ty]
-  --env-file PATH                  environment.yml to import dependencies from.
-  --force                          Overwrite existing directory.
-  --help                           Show this message and exit.
+  --python-version TEXT
+  --dry-run               Show plan without executing
+  --copy                  Copy files instead of moving them
+  --docker                Generate Docker scaffolding
+  --zenodo                Generate .zenodo.json
+  --help
+```
+
+### `pywatson status` — overview of a generated project
+
+Run this **inside** a PyWatson-generated project (any subdirectory works):
+
+```bash
+cd my-analysis
+pywatson status
+```
+
+Outputs: project name, root path, detected project type, Python version, data
+directory file counts and sizes, git status summary (branch, hash, dirty flag),
+and a list of generated directories with their item counts.
+
+### `pywatson sweep` — print filenames for a parameter sweep
+
+```bash
+# Preview filenames for alpha ∈ {0.1, 0.5} × N ∈ {100, 500}
+pywatson sweep alpha=0.1,0.5 N=100,500
+# Output:
+#   alpha=0.1_N=100.h5
+#   alpha=0.1_N=500.h5
+#   alpha=0.5_N=100.h5
+#   alpha=0.5_N=500.h5
+
+# Custom suffix and connector
+pywatson sweep alpha=0.1,0.5 N=100,500 --suffix .npz --connector -
 ```
 
 ```
-pywatson sweep [OPTIONS] KEY=VAL[,VAL...] ...
-
 Options:
-  --suffix TEXT     File suffix.  [default: .h5]
-  --connector TEXT  Connector between key=value pairs.  [default: _]
-  --help            Show this message and exit.
+  --suffix TEXT     File suffix  [default: .h5]
+  --connector TEXT  Separator between key=value pairs  [default: _]
+  --help
+```
+
+### `pywatson summary` — inspect HDF5 data files
+
+```bash
+# Summarise all .h5 files in data/
+pywatson summary
+
+# Specific subdirectory
+pywatson summary --subdir sims
+
+# Non-recursive (top-level only)
+pywatson summary --subdir sims --no-recursive
 ```
 
 ```
-pywatson summary [OPTIONS]
-
 Options:
-  --subdir TEXT  Subdirectory within data/ to summarise.
-  --recursive    Search recursively.  [default: True]
-  --help         Show this message and exit.
+  --subdir TEXT  Subdirectory within data/ to summarise
+  --recursive    Search recursively  [default: True]
+  --help
 ```
 
 ---
