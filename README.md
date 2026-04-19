@@ -195,7 +195,7 @@ uv build                         # package
 | `src/pywatson/core.py` | `ProjectScaffolder` + Click CLI |
 | `src/pywatson/utils.py` | PyWatson utilities (copied into generated projects) |
 | `src/pywatson/templates/` | Jinja2 templates for generated project files |
-| `tests/` | pytest suite (220+ tests) |
+| `tests/` | pytest suite (330+ tests) |
 
 ## 🔄 vs DrWatson.jl
 
