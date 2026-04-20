@@ -805,6 +805,7 @@ class ProjectScanner:
             ".idea",
             ".vscode",
             ".specstory",
+            ".github",
         }
     )
     IGNORE_SUFFIXES: frozenset[str] = frozenset({".pyc", ".pyo", ".pyd"})
@@ -879,6 +880,11 @@ class ProjectScanner:
         if name.lower() in {"changelog.md", "contributing.md"}:
             return "docs"
         if ext in self.DOC_EXTENSIONS:
+            # PDFs inside plot/figure directories are plots, not documents
+            if ext == ".pdf" and any(
+                part.lower() in {"plots", "figures", "figs", "fig"} for part in path.parts
+            ):
+                return "images"
             return "docs"
         if name in {".gitignore", ".gitattributes", "Makefile", "makefile"}:
             return "config"
@@ -918,6 +924,9 @@ class ProjectScanner:
         # Directory-based test detection: any parent named "tests" or "test"
         if any(part in {"tests", "test"} for part in path.parts):
             return "tests"
+        # Directory-based research detection: _research/ contents stay as "other"
+        if "_research" in path.parts:
+            return "other"
         # __init__.py marks a Python package boundary; always treat as source
         # (checked after directory context so tests/__init__.py stays as tests)
         if name == "__init__.py":

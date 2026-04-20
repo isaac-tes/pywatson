@@ -342,7 +342,8 @@ def save_data(
     Returns:
         Path to the saved file
     """
-    # Ensure filename has .h5 extension (filename is a str, not Path)
+    # Normalise to str so Path objects and strings both work
+    filename = str(filename)
     if not filename.endswith(".h5"):
         filename = filename + ".h5"
 
@@ -395,7 +396,8 @@ def load_data(filename: str, keys: list | None = None) -> dict[str, Any]:
     Returns:
         Dictionary containing the loaded data and metadata
     """
-    # Ensure filename has .h5 extension (filename is a str, not Path)
+    # Normalise to str so Path objects and strings both work
+    filename = str(filename)
     if not filename.endswith(".h5"):
         filename = filename + ".h5"
 
@@ -539,6 +541,7 @@ def data_info(filename: str) -> dict[str, Any]:
     Returns:
         Dictionary with file information
     """
+    filename = str(filename)
     if not filename.endswith(".h5"):
         filename = filename + ".h5"
 
@@ -691,6 +694,7 @@ def produce_or_load(
         print("loaded from", fp)
         ```
     """
+    filename = str(filename)
     if not filename.endswith(".h5"):
         filename = filename + ".h5"
 

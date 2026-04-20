@@ -48,22 +48,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   inside the `except ValueError:` block and left stale dry-run display code referencing
   undefined variables; rewritten cleanly.
 
+#### Scanner classification fixes (`adopt`)
+- **`_research/` directory preserved**: Python files inside `_research/` are always
+  classified as `"other"` (→ `_research/`) regardless of content. A script with
+  `if __name__ == '__main__':` or `import click` in `_research/` is no longer routed to
+  `scripts/`.
+- **Plot PDFs classified as images**: `.pdf` files inside `plots/`, `figures/`, `figs/`, or
+  `fig/` directories are classified as `"images"` (→ `plots/`) instead of `"docs"`.
+  PDFs outside plot directories (e.g. a paper draft) still go to `docs/`.
+- **`.github/` directory ignored**: `.github` added to `ProjectScanner.IGNORE_DIRS` —
+  CI workflow files and `copilot-instructions.md` are no longer scanned or adopted.
+
+#### `utils.py` — `Path` objects accepted as `filename`
+- `save_data()`, `load_data()`, `data_info()`, and `produce_or_load()` now coerce
+  `filename` to `str` before calling `.endswith()`, fixing
+  `AttributeError: 'PosixPath' object has no attribute 'endswith'` when a `Path` is passed.
+
 #### Other fixes
 - Docs: Zenodo link text clarity (`docs/citation.md`)
 - Docs: `CLI.md` and `ADOPT_GUIDE.md` updated with new `--docker` / `--zenodo` options
-- Docs: `ADOPT_GUIDE.md` classification table corrected — `.pdf` goes to `docs/` not `plots/`;
-  added scanner ignore rules and collision-aware placement explanation
+- Docs: `ADOPT_GUIDE.md` classification table corrected and extended — PDF/plot rules,
+  `_research/` special-casing, `.github` ignore rule, scanner ignore rules documented
 - CHANGELOG [0.0.1]: corrected project type list (`ml`, `data-analysis` never existed;
   the third type is `full`) and removed mention of nonexistent `--no-prompt` flag
 - Version string in `core.py` and `__init__.py` corrected from stale values to `"0.0.2"`
 
 ### Tests
 
-- 25 new tests added: `TestZenodoScaffolding` (12), `TestDockerAndZenodoInAdopt` (4),
+- 28 new tests: `TestZenodoScaffolding` (12), `TestDockerAndZenodoInAdopt` (4),
   `TestDockerZenodoCLIFlags` (3), `test_zenodo_json_template_renders_valid_json` (1),
-  `TestProjectScannerAndAdoptFixes` (7 — scanner IDE/OS ignoring, path collision preservation,
-  module package structure, no IDE files adopted)
-- Total: **340 collected, 333 passed, 7 skipped** (up from 315)
+  `TestProjectScannerAndAdoptFixes` (10 — scanner IDE/OS/github ignoring, path collision
+  preservation, module package structure, no IDE files adopted, `_research/` classification,
+  plot PDF classification)
+- Total: **343 collected, 336 passed, 7 skipped** (up from 315)
 
 ---
 

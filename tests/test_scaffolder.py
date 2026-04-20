@@ -1174,6 +1174,21 @@ class TestProjectScannerAndAdoptFixes:
         nb_dir = src / "notebooks"
         nb_dir.mkdir()
         (nb_dir / "analysis.ipynb").write_text('{"cells":[]}')
+        # _research/ dir with Python files that look like scripts / source
+        research = src / "_research"
+        research.mkdir()
+        (research / "scratch.py").write_text('if __name__ == "__main__":\n    pass\n')
+        (research / "explore.py").write_text("import click\n")
+        (research / "wip_analysis.py").write_text("def helper(): pass\n")
+        # plots/ dir with PDF files (should be images, not docs)
+        plots = src / "plots"
+        plots.mkdir()
+        (plots / "figure1.pdf").write_bytes(b"%PDF-1.4")
+        (plots / "figure2.pdf").write_bytes(b"%PDF-1.4")
+        # .github/ dir (should be ignored entirely)
+        github = src / ".github"
+        github.mkdir()
+        (github / "copilot-instructions.md").write_text("# instructions\n")
         return src
 
     # ---------------------------------------------------------------------- #
@@ -1292,6 +1307,68 @@ class TestProjectScannerAndAdoptFixes:
         assert (core_parent / "__init__.py").exists(), (
             f"__init__.py not found next to core.py in {core_parent}"
         )
+
+    def test_scanner_classifies_research_dir_as_other(self, temp_dir):
+        """Python files inside _research/ must be classified as 'other', not 'scripts'."""
+        from pywatson.core import ProjectScanner
+
+        src = self._make_messy_source(temp_dir)
+        scanner = ProjectScanner(src)
+        classified = scanner.scan()
+
+        scripts_research = [
+            f for f in classified.get("scripts", [])
+            if "_research" in f.parts
+        ]
+        source_research = [
+            f for f in classified.get("source", [])
+            if "_research" in f.parts
+        ]
+        other_research = [
+            f for f in classified.get("other", [])
+            if "_research" in f.parts
+        ]
+        assert scripts_research == [], (
+            f"_research/ files misclassified as scripts: {scripts_research}"
+        )
+        assert source_research == [], (
+            f"_research/ files misclassified as source: {source_research}"
+        )
+        assert len(other_research) == 3, (
+            f"Expected 3 _research/ files in 'other', got: {other_research}"
+        )
+
+    def test_scanner_classifies_plots_pdf_as_images(self, temp_dir):
+        """PDF files inside plots/ must be classified as 'images', not 'docs'."""
+        from pywatson.core import ProjectScanner
+
+        src = self._make_messy_source(temp_dir)
+        scanner = ProjectScanner(src)
+        classified = scanner.scan()
+
+        docs_pdfs = [
+            f for f in classified.get("docs", [])
+            if f.suffix == ".pdf" and "plots" in f.parts
+        ]
+        image_pdfs = [
+            f for f in classified.get("images", [])
+            if f.suffix == ".pdf" and "plots" in f.parts
+        ]
+        assert docs_pdfs == [], f"plots/ PDFs misclassified as docs: {docs_pdfs}"
+        assert len(image_pdfs) == 2, (
+            f"Expected 2 plots/ PDFs in 'images', got: {image_pdfs}"
+        )
+
+    def test_scanner_ignores_github_dir(self, temp_dir):
+        """ProjectScanner must not include files from .github/."""
+        from pywatson.core import ProjectScanner
+
+        src = self._make_messy_source(temp_dir)
+        scanner = ProjectScanner(src)
+        classified = scanner.scan()
+        all_files = [f for files in classified.values() for f in files]
+        github_files = [f for f in all_files if ".github" in f.parts]
+        assert github_files == [], f"Expected no .github files, got: {github_files}"
 
     def test_adopt_does_not_include_ide_files(self, temp_dir):
         """adopt must not copy .idea / .vscode / .specstory files into target."""

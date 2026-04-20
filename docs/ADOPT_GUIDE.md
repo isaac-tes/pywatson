@@ -42,12 +42,13 @@ Files are sorted into 9 categories:
 | **data** | *.csv, *.json, *.h5, *.npz, *.npy, *.nc, *.zarr | `data/` |
 | **scripts** | main.py, analyze.py (with `if __name__=='__main__'`) | `scripts/` |
 | **source** | helper.py, utils.py, package `__init__.py` | `src/{package_name}/` |
-| **docs** | CHANGELOG.md, CONTRIBUTING.md, *.rst, *.tex, **.pdf** | `docs/` |
+| **docs** | CHANGELOG.md, CONTRIBUTING.md, *.rst, *.tex, *.pdf (outside plot dirs) | `docs/` |
 | **config** | README.md, LICENSE, *.yml, *.toml, *.ini, `uv.lock`, `.python-version` | Project root |
-| **images** | *.png, *.jpg, *.svg, *.eps, *.gif | `plots/` |
-| **other** | Anything else | `_research/` |
+| **images** | *.png, *.jpg, *.svg, *.eps, *.gif, **.pdf inside `plots/`/`figures/`** | `plots/` |
+| **other** | Anything else, and **all files inside `_research/`** | `_research/` |
 
-> **Note**: `.pdf` files are classified as **docs** (not images) and go to `docs/`.
+> **Note**: `.pdf` files inside a `plots/`, `figures/`, `figs/`, or `fig/` directory are
+> classified as **images** and go to `plots/`. PDFs elsewhere (e.g. a paper draft) go to `docs/`.
 
 ### What the scanner ignores
 
@@ -55,8 +56,13 @@ The scanner automatically skips:
 
 - **Build / cache directories**: `.git`, `__pycache__`, `.venv`, `venv`, `dist`, `build`, `.tox`, `.mypy_cache`, `.ruff_cache`, `.pytest_cache`, `node_modules`, etc.
 - **IDE config directories**: `.idea`, `.vscode`, `.specstory` — never scanned or copied.
+- **CI/VCS config directories**: `.github` — workflows and Copilot instructions are ignored.
 - **OS metadata files**: `.DS_Store`, `Thumbs.db`, `desktop.ini`, `.gitkeep`, `.keep`.
 - **Compiled bytecode**: `.pyc`, `.pyo`, `.pyd`.
+
+> **`_research/` is special**: Python files inside `_research/` are always classified as
+> **other** (→ `_research/`), regardless of their content. A script with
+> `if __name__ == '__main__':` in `_research/` will *not* be routed to `scripts/`.
 
 ### 3. Interactive confirmation
 
