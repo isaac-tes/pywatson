@@ -21,6 +21,7 @@ import itertools
 import json
 import os
 import platform
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -851,6 +852,238 @@ def parse_savename(filename: str) -> dict[str, Any]:
     return result
 
 
+def _resolve_data_path(filename: str | Path) -> Path:
+    """Resolve ``filename`` to an existing HDF5 file.
+
+    Accepts an explicit path or a bare name resolved inside ``data/``.
+    """
+    p = Path(filename)
+    if p.exists():
+        return p.resolve()
+    name = str(filename)
+    if not name.endswith(".h5"):
+        name = name + ".h5"
+    p = Path(name)
+    if p.exists():
+        return p.resolve()
+    fp = datafile(name, create_dir=False)
+    if fp.exists():
+        return fp
+    raise FileNotFoundError(f"Data file not found: {filename}")
+
+
+def _build_run_cmd(project_root: Path, script_path: Path) -> list[str]:
+    """Build the command to re-run ``script_path``.
+
+    Uses ``uv run python`` for uv projects (``pyproject.toml`` + ``uv.lock``)
+    when ``uv`` is available, otherwise the current interpreter.
+    """
+    rel = str(script_path)
+    try:
+        rel = str(script_path.relative_to(project_root))
+    except ValueError:
+        pass
+    is_uv = (project_root / "pyproject.toml").exists() and (project_root / "uv.lock").exists()
+    if is_uv and shutil.which("uv"):
+        return ["uv", "run", "python", rel]
+    return [sys.executable, rel]
+
+
+# Metadata keys that legitimately vary between runs and are excluded from
+# reproducibility comparison.
+_VOLATILE_META = {"created_at", "created_by", "script", "gitcommit", "gitpatch", "gitbranch"}
+
+
+def _read_h5_contents(path: Path) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Return ``(datasets, metadata)`` for an HDF5 file at an arbitrary path."""
+    datasets: dict[str, Any] = {}
+    metadata: dict[str, Any] = {}
+    with h5py.File(path, "r") as f:
+        if "metadata" in f.attrs:
+            try:
+                metadata = json.loads(str(f.attrs["metadata"]))
+            except json.JSONDecodeError:
+                metadata = {}
+
+        def _visit(name: str, obj: Any) -> None:
+            if isinstance(obj, h5py.Dataset):
+                datasets[name] = obj[()]
+
+        f.visititems(_visit)
+    return datasets, metadata
+
+
+def _compare_h5(original: Path, fresh: Path, rtol: float = 1e-7, atol: float = 0.0) -> list[str]:
+    """Compare two HDF5 files; return sorted list of mismatched keys.
+
+    Numeric datasets are compared with :func:`numpy.allclose`; others with
+    exact equality.  Metadata keys in :data:`_VOLATILE_META` are ignored.
+    """
+    da, ma = _read_h5_contents(original)
+    db, mb = _read_h5_contents(fresh)
+    mismatches: list[str] = []
+
+    for key in set(da) | set(db):
+        if key not in da or key not in db:
+            mismatches.append(key)
+            continue
+        arr_a, arr_b = np.asarray(da[key]), np.asarray(db[key])
+        if arr_a.shape != arr_b.shape:
+            mismatches.append(key)
+        elif np.issubdtype(arr_a.dtype, np.number) and np.issubdtype(arr_b.dtype, np.number):
+            if not np.allclose(arr_a, arr_b, rtol=rtol, atol=atol, equal_nan=True):
+                mismatches.append(key)
+        elif not np.array_equal(arr_a, arr_b):
+            mismatches.append(key)
+
+    for key in (set(ma) | set(mb)) - _VOLATILE_META:
+        if ma.get(key) != mb.get(key):
+            mismatches.append(f"meta:{key}")
+
+    return sorted(mismatches)
+
+
+def reproduce(
+    filename: str | Path,
+    verify: bool = False,
+    run: bool = True,
+    rtol: float = 1e-7,
+    atol: float = 0.0,
+) -> dict[str, Any]:
+    """Re-run the script that produced a data file (soft reproducibility).
+
+    Reads the provenance metadata embedded by :func:`save_data` / :func:`tagsave`
+    (recording script, git commit, branch, dirty flag) plus the parameters
+    encoded in the filename, reports the recorded state against the current git
+    state, and re-executes the recording script.
+
+    Fidelity is **soft**: the script runs against the *current* checkout — no
+    commit is checked out.  A warning is printed when the recorded commit
+    differs from ``HEAD``, when the working tree is dirty, or when the file was
+    produced from a dirty tree (whose exact state is not recorded).
+
+    Args:
+        filename: Data file — an explicit path, or a bare name resolved in
+            ``data/``.
+        verify: If True, back up the original file, re-run, then compare the
+            freshly produced file against the original (numeric datasets via
+            :func:`numpy.allclose`, others exactly; volatile metadata excluded).
+        run: If False, only read and report provenance without executing the
+            script (dry run).
+        rtol: Relative tolerance for array comparison under ``verify``.
+        atol: Absolute tolerance for array comparison under ``verify``.
+
+    Returns:
+        Dictionary with keys ``script``, ``params``, ``recorded_commit``,
+        ``recorded_branch``, ``recorded_dirty``, ``current_commit``,
+        ``current_dirty``, ``ran``, ``returncode`` and — when ``verify`` —
+        ``reproduced`` and ``mismatches``.
+
+    Raises:
+        FileNotFoundError: If the data file or its recorded script is missing.
+
+    Example:
+        ```python
+        reproduce("alpha=0.5_N=100.h5", verify=True)
+        ```
+    """
+    filepath = _resolve_data_path(filename)
+    _, meta = _read_h5_contents(filepath)
+
+    script = meta.get("script")
+    clean = git_status_clean()
+    result: dict[str, Any] = {
+        "script": script,
+        "params": parse_savename(filepath.name),
+        "recorded_commit": meta.get("gitcommit"),
+        "recorded_branch": meta.get("gitbranch"),
+        "recorded_dirty": meta.get("gitpatch"),
+        "current_commit": current_git_commit(),
+        "current_dirty": (not clean) if clean is not None else None,
+        "ran": False,
+        "returncode": None,
+    }
+
+    # --- report provenance ---
+    print(f"[pywatson] reproduce {filepath.name}")
+    print(f"  script          : {script}")
+    if result["params"]:
+        print(f"  params          : {result['params']}")
+    branch = f" on {result['recorded_branch']}" if result["recorded_branch"] else ""
+    print(f"  recorded commit : {result['recorded_commit'] or '(not recorded)'}{branch}")
+    print(f"  current commit  : {result['current_commit'] or '(no git)'}")
+
+    if (
+        result["recorded_commit"]
+        and result["current_commit"]
+        and result["recorded_commit"] != result["current_commit"]
+    ):
+        print(
+            f"  WARNING: current commit differs from recorded "
+            f"({result['recorded_commit']} != {result['current_commit']}); "
+            "results may not reproduce."
+        )
+    if result["current_dirty"]:
+        print("  WARNING: working tree is dirty; uncommitted changes affect results.")
+    if result["recorded_dirty"]:
+        print("  WARNING: file was produced from a DIRTY tree; exact state not recorded.")
+
+    if not script or script == "unknown_script":
+        raise FileNotFoundError(
+            f"No recording script in metadata of {filepath.name}; cannot reproduce."
+        )
+
+    project_root = find_project_root() or Path.cwd()
+    script_path = Path(script)
+    if not script_path.is_absolute():
+        script_path = project_root / script
+    if not script_path.exists():
+        raise FileNotFoundError(f"Recorded script not found: {script_path}")
+
+    if not run:
+        return result
+
+    backup: Path | None = None
+    backup_dir: str | None = None
+    if verify:
+        backup_dir = tempfile.mkdtemp(prefix="pywatson_repro_")
+        backup = Path(backup_dir) / filepath.name
+        shutil.copy2(filepath, backup)
+
+    try:
+        cmd = _build_run_cmd(project_root, script_path)
+        print(f"  running         : {' '.join(cmd)}")
+        proc = subprocess.run(cmd, cwd=str(project_root))
+        result["ran"] = True
+        result["returncode"] = proc.returncode
+
+        if proc.returncode != 0:
+            print(f"  ERROR: script exited with code {proc.returncode}")
+            if verify:
+                result["reproduced"] = False
+                result["mismatches"] = ["<script failed>"]
+            return result
+
+        if verify:
+            if not filepath.exists():
+                print("  VERIFY: script did not regenerate the file; cannot verify.")
+                result["reproduced"] = False
+                result["mismatches"] = ["<file not regenerated>"]
+            else:
+                mismatches = _compare_h5(backup, filepath, rtol=rtol, atol=atol)  # type: ignore[arg-type]
+                result["mismatches"] = mismatches
+                result["reproduced"] = len(mismatches) == 0
+                if result["reproduced"]:
+                    print("  VERIFY: reproduced — outputs match.")
+                else:
+                    print(f"  VERIFY: MISMATCH in {len(mismatches)} key(s): {mismatches}")
+    finally:
+        if backup_dir is not None:
+            shutil.rmtree(backup_dir, ignore_errors=True)
+
+    return result
+
+
 def dict_list(*dicts: dict) -> list[dict[str, Any]]:
     """
     Expand parameter dictionaries into every combination (Cartesian product).
@@ -916,6 +1149,7 @@ def safesave(
     Returns:
         Path to the saved file.
     """
+    filename = str(filename)
     if not filename.endswith(".h5"):
         filename = filename + ".h5"
 

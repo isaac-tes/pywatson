@@ -412,6 +412,45 @@ params = {"N": 1000, "beta": 0.44}
 tagsave(savename(params), run_simulation(**params), tags={**params, **meta})
 ```
 
+### `reproduce(filename, verify=False, run=True, rtol=1e-7, atol=0.0)`
+
+Re-runs the script that produced a data file. Reads the provenance embedded by
+`save_data` / `tagsave` (recording script, git commit, branch, dirty flag) plus
+the parameters encoded in the filename, reports the recorded state against the
+current git state, and re-executes the recording script.
+
+Fidelity is **soft** — the script runs against the *current* checkout (no commit
+is checked out); a warning is printed when `HEAD` differs from the recorded
+commit or the working tree is dirty. Uses `uv run python` for uv projects, else
+the current interpreter.
+
+```python
+from my_project import reproduce
+
+# Re-run the recording script
+reproduce("alpha=0.5_N=100.h5")
+
+# Re-run, then confirm the fresh output matches the original
+result = reproduce("alpha=0.5_N=100.h5", verify=True)
+# {"script": "scripts/run.py", "reproduced": True, "mismatches": [], ...}
+
+# Inspect provenance without running anything
+reproduce("alpha=0.5_N=100.h5", run=False)
+```
+
+With `verify=True`, the original file is backed up, the script re-run, and the
+fresh output compared against it — numeric datasets via `numpy.allclose`
+(`rtol`/`atol`), others exactly, volatile metadata (timestamps, git info)
+excluded. Pair with `set_random_seed` for deterministic, verifiable runs.
+
+Also available on the CLI:
+
+```bash
+pywatson reproduce data/alpha=0.5_N=100.h5            # re-run
+pywatson reproduce data/alpha=0.5_N=100.h5 --verify   # re-run + compare (nonzero exit on mismatch)
+pywatson reproduce data/alpha=0.5_N=100.h5 --dry-run  # provenance only
+```
+
 ---
 
 ## Git Utilities
