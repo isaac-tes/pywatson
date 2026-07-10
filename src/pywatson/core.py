@@ -1389,9 +1389,7 @@ def init_project() -> None:
 
     author_name = click.prompt("Author name", default=_git_config("user.name"))
     author_email = click.prompt("Author email", default=_git_config("user.email"))
-    description = click.prompt(
-        "Project description", default="A scientific computing project"
-    )
+    description = click.prompt("Project description", default="A scientific computing project")
     path = click.prompt("Project path", default=".")
 
     project_type = _prompt_menu(
@@ -1433,9 +1431,7 @@ def init_project() -> None:
         if Path(env_file_input).exists():
             env_file = env_file_input
         else:
-            console.print(
-                f"[yellow]Warning: {env_file_input} not found, ignoring.[/yellow]"
-            )
+            console.print(f"[yellow]Warning: {env_file_input} not found, ignoring.[/yellow]")
     docker = click.confirm("Include Docker files? (default: No)", default=False)
     zenodo = click.confirm(
         "Generate .zenodo.json for Zenodo DOI integration? (default: No)", default=False
@@ -1642,6 +1638,44 @@ def summary_command(subdir: str | None, recursive: bool) -> None:
             console.print(f"    created : {created}")
         if keys:
             console.print(f"    datasets: {', '.join(keys)}")
+
+
+@cli.command("reproduce")
+@click.argument("data_file", type=click.Path())
+@click.option(
+    "--verify",
+    is_flag=True,
+    default=False,
+    help="Re-run, then compare the fresh output against the original file.",
+)
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    default=False,
+    help="Only print recorded provenance; do not run the script.",
+)
+def reproduce_command(data_file: str, verify: bool, dry_run: bool) -> None:
+    """Re-run the script that produced DATA_FILE (soft reproducibility).
+
+    Reads the provenance embedded by save_data/tagsave, reports recorded vs
+    current git state, then re-executes the recording script. With --verify the
+    freshly produced file is compared against the original.
+    """
+    from pywatson.utils import reproduce
+
+    try:
+        result = reproduce(data_file, verify=verify, run=not dry_run)
+    except FileNotFoundError as e:
+        console.print(f"[red]{e}[/red]")
+        raise SystemExit(1) from e
+
+    if verify and result.get("reproduced") is False:
+        console.print(
+            f"[red]Verification failed — mismatched keys: {result.get('mismatches')}[/red]"
+        )
+        raise SystemExit(1)
+    if result.get("returncode") not in (None, 0):
+        raise SystemExit(result["returncode"])
 
 
 # ==========================================================================
@@ -1898,9 +1932,7 @@ def adopt_command(
 
     # ------------------------------------------------------------------ confirm
     if not auto:
-        docker = docker or click.confirm(
-            "\nInclude Docker files?", default=False
-        )
+        docker = docker or click.confirm("\nInclude Docker files?", default=False)
         zenodo = zenodo or click.confirm(
             "Generate .zenodo.json for Zenodo DOI integration?", default=False
         )

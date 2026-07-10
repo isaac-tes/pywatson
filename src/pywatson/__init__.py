@@ -28,6 +28,7 @@ from .utils import (
     plotsdir,
     produce_or_load,
     projectdir,
+    reproduce,
     # Reproducibility
     safesave,
     save_array,
@@ -75,6 +76,7 @@ __all__ = [
     "list_data_files",
     "tagsave",
     "produce_or_load",
+    "reproduce",
     "collect_results",
     # PyWatson primitives
     "parse_savename",

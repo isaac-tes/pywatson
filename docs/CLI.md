@@ -254,5 +254,43 @@ pywatson summary --no-recursive
 
 ---
 
+## `pywatson reproduce` — re-run the script that produced a file
+
+Reads the provenance embedded in a data file (recording script, git commit,
+branch, dirty flag) and re-runs the script that created it. Soft fidelity: the
+script runs against the *current* checkout, with a warning when `HEAD` differs
+from the recorded commit or the working tree is dirty.
+
+```bash
+pywatson reproduce DATA_FILE [OPTIONS]
+```
+
+### Options
+
+| Option      | Description                                                        |
+|-------------|--------------------------------------------------------------------|
+| `--verify`  | Re-run, then compare the fresh output against the original file.   |
+| `--dry-run` | Only print recorded provenance; do not run the script.            |
+
+### Examples
+
+```bash
+# Re-run the recording script
+pywatson reproduce data/sims/N=100_beta=0.44.h5
+
+# Re-run and confirm the output reproduces (exit 1 on mismatch)
+pywatson reproduce data/sims/N=100_beta=0.44.h5 --verify
+
+# Inspect provenance only
+pywatson reproduce data/sims/N=100_beta=0.44.h5 --dry-run
+```
+
+`--verify` backs up the original, re-runs the script, and compares the fresh
+output against it (numeric datasets via `numpy.allclose`, others exactly,
+volatile metadata excluded). Pair with `set_random_seed` in your scripts for
+deterministic, verifiable reproduction.
+
+---
+
 *See also: [UTILITIES.md](UTILITIES.md) · [QUICKSTART.md](QUICKSTART.md) ·
 [DOCKER_GUIDE.md](DOCKER_GUIDE.md) · [ZENODO.md](ZENODO.md)*
