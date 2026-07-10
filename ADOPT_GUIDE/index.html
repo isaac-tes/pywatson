@@ -25,7 +25,7 @@
       
       
       <link rel="icon" href="../assets/logo.svg">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.4">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
@@ -505,6 +505,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#what-the-scanner-ignores" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the scanner ignores
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#3-interactive-confirmation" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -901,7 +912,7 @@
   <span class="md-ellipsis">
     
   
-    Zenodo & Citation
+    Zenodo Guide
   
 
     
@@ -1160,6 +1171,17 @@
     <span class="md-ellipsis">
       
         2. Classification
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-the-scanner-ignores" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the scanner ignores
       
     </span>
   </a>
@@ -1433,7 +1455,7 @@ pywatson structure, while preserving your code unchanged.</p>
 <h2 id="when-to-use">When to use<a class="headerlink" href="#when-to-use" title="Permanent link">&para;</a></h2>
 <ul>
 <li>✅ You have messy, unstructured code with files scattered around</li>
-<li>✅ You want DrWatson-style organization without rewriting</li>
+<li>✅ You want PyWatson-style organization without rewriting</li>
 <li>✅ You want to migrate an existing project to pywatson standards</li>
 <li>❌ You don't need it for brand-new projects (use <code>pywatson init</code>)</li>
 </ul>
@@ -1474,7 +1496,7 @@ organized into the standard structure.</p>
 </tr>
 <tr>
 <td><strong>data</strong></td>
-<td><em>.csv, </em>.json, *.h5</td>
+<td><em>.csv, </em>.json, <em>.h5, </em>.npz, <em>.npy, </em>.nc, *.zarr</td>
 <td><code>data/</code></td>
 </tr>
 <tr>
@@ -1484,31 +1506,49 @@ organized into the standard structure.</p>
 </tr>
 <tr>
 <td><strong>source</strong></td>
-<td>helper.py, utils.py (with <code>def</code>/<code>class</code>)</td>
+<td>helper.py, utils.py, package <code>__init__.py</code></td>
 <td><code>src/{package_name}/</code></td>
 </tr>
 <tr>
 <td><strong>docs</strong></td>
-<td>README.md, *.rst</td>
+<td>CHANGELOG.md, CONTRIBUTING.md, <em>.rst, </em>.tex, *.pdf (outside plot dirs)</td>
 <td><code>docs/</code></td>
 </tr>
 <tr>
 <td><strong>config</strong></td>
-<td><em>.yml, </em>.toml, *.ini, requirements.txt</td>
+<td>README.md, LICENSE, <em>.yml, </em>.toml, *.ini, <code>uv.lock</code>, <code>.python-version</code></td>
 <td>Project root</td>
 </tr>
 <tr>
 <td><strong>images</strong></td>
-<td><em>.png, </em>.jpg, *.pdf</td>
+<td><em>.png, </em>.jpg, <em>.svg, </em>.eps, <em>.gif, </em><em>.pdf inside <code>plots/</code>/<code>figures/</code></em>*</td>
 <td><code>plots/</code></td>
 </tr>
 <tr>
 <td><strong>other</strong></td>
-<td>Anything else</td>
+<td>Anything else, and <strong>all files inside <code>_research/</code></strong></td>
 <td><code>_research/</code></td>
 </tr>
 </tbody>
 </table>
+<blockquote>
+<p><strong>Note</strong>: <code>.pdf</code> files inside a <code>plots/</code>, <code>figures/</code>, <code>figs/</code>, or <code>fig/</code> directory are
+classified as <strong>images</strong> and go to <code>plots/</code>. PDFs elsewhere (e.g. a paper draft) go to <code>docs/</code>.</p>
+</blockquote>
+<h3 id="what-the-scanner-ignores">What the scanner ignores<a class="headerlink" href="#what-the-scanner-ignores" title="Permanent link">&para;</a></h3>
+<p>The scanner automatically skips:</p>
+<ul>
+<li><strong>Build / cache directories</strong>: <code>.git</code>, <code>__pycache__</code>, <code>.venv</code>, <code>venv</code>, <code>dist</code>, <code>build</code>, <code>.tox</code>, <code>.mypy_cache</code>, <code>.ruff_cache</code>, <code>.pytest_cache</code>, <code>node_modules</code>, etc.</li>
+<li><strong>IDE config directories</strong>: <code>.idea</code>, <code>.vscode</code>, <code>.specstory</code> — never scanned or copied.</li>
+<li><strong>CI/VCS config directories</strong>: <code>.github</code> — workflows and Copilot instructions are ignored.</li>
+<li><strong>OS metadata files</strong>: <code>.DS_Store</code>, <code>Thumbs.db</code>, <code>desktop.ini</code>, <code>.gitkeep</code>, <code>.keep</code>.</li>
+<li><strong>Compiled bytecode</strong>: <code>.pyc</code>, <code>.pyo</code>, <code>.pyd</code>.</li>
+</ul>
+<blockquote>
+<p><strong><code>_research/</code> is special</strong>: Python files inside <code>_research/</code> are always classified as
+<strong>other</strong> (→ <code>_research/</code>), regardless of their content. A script with
+<code>if __name__ == '__main__':</code> in <code>_research/</code> will <em>not</em> be routed to <code>scripts/</code>.</p>
+</blockquote>
 <h3 id="3-interactive-confirmation">3. Interactive confirmation<a class="headerlink" href="#3-interactive-confirmation" title="Permanent link">&para;</a></h3>
 <p>Before copying, you can review the plan:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>Adoption Plan for /path/to/messy-code → messy_code
@@ -1531,7 +1571,9 @@ organized into the standard structure.</p>
 <h3 id="4-scaffolding-copying">4. Scaffolding &amp; copying<a class="headerlink" href="#4-scaffolding-copying" title="Permanent link">&para;</a></h3>
 <p>Once confirmed:
 1. Create all pywatson directories
-2. Copy files to their new homes
+2. Copy files to their new homes — using <strong>collision-aware path placement</strong>:
+   - If all files in a category have <strong>unique filenames</strong>, they are placed flat (e.g. <code>data/results.npz</code>)
+   - If two or more files share the same name (e.g. thousands of <code>ens_data.npz</code> in parameter-named subdirectories), the <strong>full relative path is preserved</strong> (e.g. <code>data/phi_0.5_N_10/run_001/ens_data.npz</code>) so nothing is lost
 3. Generate boilerplate: <code>pyproject.toml</code>, <code>.gitignore</code>, <code>LICENSE</code>, etc.
 4. Optionally initialize <code>uv</code> for dependency management</p>
 <h2 id="options">Options<a class="headerlink" href="#options" title="Permanent link">&para;</a></h2>
@@ -1551,7 +1593,7 @@ organized into the standard structure.</p>
 </tr>
 <tr>
 <td><code>-o, --output-path PATH</code></td>
-<td>Write to different location (default: cwd)</td>
+<td>Write to different location (default: alongside source as <code>&lt;name&gt;_pywatson</code>)</td>
 </tr>
 <tr>
 <td><code>--auto</code></td>
@@ -1575,11 +1617,11 @@ organized into the standard structure.</p>
 </tr>
 <tr>
 <td><code>--author-name NAME</code></td>
-<td>Set author (required)</td>
+<td>Set author (default: <code>git config user.name</code>)</td>
 </tr>
 <tr>
 <td><code>--author-email EMAIL</code></td>
-<td>Set email (required)</td>
+<td>Set email (default: <code>git config user.email</code>)</td>
 </tr>
 <tr>
 <td><code>--description TEXT</code></td>
@@ -1596,6 +1638,14 @@ organized into the standard structure.</p>
 <tr>
 <td><code>--python-version VERSION</code></td>
 <td>Minimum Python version (default: 3.12)</td>
+</tr>
+<tr>
+<td><code>--docker</code></td>
+<td>Scaffold Docker + docker-compose files for container reproducibility</td>
+</tr>
+<tr>
+<td><code>--zenodo</code></td>
+<td>Generate <code>.zenodo.json</code> metadata for Zenodo GitHub integration</td>
 </tr>
 </tbody>
 </table>
@@ -1714,7 +1764,7 @@ and manually copy files as needed.</p>
 <ul>
 <li><a href="../QUICKSTART/">QUICKSTART.md</a> — Using pywatson after adoption</li>
 <li><a href="../CLI/">CLI.md</a> — Full <code>pywatson adopt</code> reference</li>
-<li><a href="../UTILITIES/">UTILITIES.md</a> — DrWatson API in adopted projects</li>
+<li><a href="../UTILITIES/">UTILITIES.md</a> — PyWatson API in adopted projects</li>
 </ul>
 
 
@@ -1738,7 +1788,7 @@ and manually copy files as needed.</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="March 10, 2026 10:21:44 UTC"><span class="timeago" datetime="2026-03-10T10:21:44+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="March 10, 2026 10:21:44 UTC">2026-03-10</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="April 20, 2026 12:54:10 UTC"><span class="timeago" datetime="2026-04-20T12:54:10+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="April 20, 2026 12:54:10 UTC">2026-04-20</span>
   </span>
 
     
