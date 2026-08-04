@@ -1,0 +1,115 @@
+# justfile for {{ project_name_title }}
+#
+# Common tasks for development, testing, and maintenance.
+# Run `just --list` to see all recipes, or `just` to see this help.
+#
+# Requires just: https://github.com/casey/just#installation
+
+set shell := ["bash", "-uc"]
+
+default:
+    @just --list
+
+# ---------------------------------------------------------------------------
+# Development setup
+# ---------------------------------------------------------------------------
+
+# Install all dependencies (including dev)
+setup:
+    uv sync
+
+# ---------------------------------------------------------------------------
+# Quality assurance
+# ---------------------------------------------------------------------------
+
+# Run tests with pytest
+test:
+    uv run pytest tests/ -v
+
+# Run tests with coverage report
+test-cov:
+    uv run pytest tests/ -v --cov=src/{{ package_name }} --cov-report=term-missing
+
+# Run ruff linter
+lint:
+    uv run ruff check src/ tests/
+
+# Run ruff linter with auto-fix
+lint-fix:
+    uv run ruff check --fix src/ tests/
+
+# Auto-format code with ruff
+format:
+    uv run ruff format src/ tests/
+
+# Check formatting without modifying files
+format-check:
+    uv run ruff format --check src/ tests/
+
+# Run type checker
+typecheck:
+{%- if type_checker == "mypy" %}
+    uv run mypy src/{{ package_name }}/
+{%- elif type_checker == "ty" %}
+    uv run ty check src/{{ package_name }}/
+{%- else %}
+    @echo "No type checker configured (type_checker=none)."
+{%- endif %}
+
+{% if type_checker != "none" -%}
+# Run all checks (lint + format + typecheck + test)
+check: lint format-check typecheck test
+{%- else -%}
+# Run all checks (lint + format + test)
+check: lint format-check test
+{%- endif %}
+
+# ---------------------------------------------------------------------------
+# Data & analysis workflows
+# ---------------------------------------------------------------------------
+
+# Run data generation scripts
+data:
+    uv run python scripts/generate_data.py
+
+# Run data analysis scripts
+analyze:
+    uv run python scripts/analyze_data.py
+
+# ---------------------------------------------------------------------------
+# Documentation
+# ---------------------------------------------------------------------------
+
+# Build documentation (if configured)
+docs:
+    @echo "Documentation build not yet configured."
+    @echo "Consider using mkdocs or sphinx."
+
+# ---------------------------------------------------------------------------
+# Build & distribution
+# ---------------------------------------------------------------------------
+
+# Build distribution packages
+build:
+    uv build
+
+# ---------------------------------------------------------------------------
+# Cleanup
+# ---------------------------------------------------------------------------
+
+# Remove build artifacts, caches, and temporary files
+clean:
+    rm -rf build/ dist/ *.egg-info
+{%- if type_checker == "mypy" %}
+    rm -rf .pytest_cache/ .mypy_cache/ .ruff_cache/
+{%- else %}
+    rm -rf .pytest_cache/ .ruff_cache/
+{%- endif %}
+    find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+    find . -type f -name "*.pyc" -delete 2>/dev/null || true
+    @echo "Cleaned build artifacts and caches."
+
+# Remove all generated data files (use with caution!)
+clean-data:
+    @echo "WARNING: This will remove all files in data/"
+    @read -p "Are you sure? [y/N] " confirm && [ "$confirm" = "y" ] && rm -rf data/* || echo "Aborted."

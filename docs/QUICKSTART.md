@@ -84,7 +84,7 @@ pywatson --project-name my-analysis \
   --author-email "jane@university.edu" \
   --description "Spin-chain Monte Carlo study"
 
-# Full project (adds CI, Makefile, CONTRIBUTING, CHANGELOG)
+# Full project (adds CI, justfile, CONTRIBUTING, CHANGELOG)
 pywatson --project-name my-analysis \
   --project-type full \
   --license BSD-3-Clause \
@@ -114,7 +114,7 @@ uv run pytest    # confirm tests pass (should be 2/2 green)
 |------|----------|--------|
 | `default` | Standard scientific project | `data/{sims,exp_raw,exp_pro}`, `_research/`, `notebooks/`, `plots/` |
 | `minimal` | Lightweight / tooling-only | `src/`, `data/`, `scripts/`, `tests/`, `docs/` (no notebooks, no _research) |
-| `full` | Publication-ready repository | Everything in `default` + `config/`, `Makefile`, `.github/workflows/ci.yml`, `CONTRIBUTING.md`, `CHANGELOG.md` |
+| `full` | Publication-ready repository | Everything in `default` + `config/`, `justfile`, `.github/workflows/ci.yml`, `CONTRIBUTING.md`, `CHANGELOG.md` |
 
 ---
 

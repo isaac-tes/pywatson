@@ -368,7 +368,7 @@ class TestProjectScaffolder:
         expected_files = [
             "config/ruff.toml",
             "config/pytest.ini",
-            "Makefile",
+            "justfile",
             ".github/workflows/ci.yml",
             "CONTRIBUTING.md",
             "CHANGELOG.md",
@@ -381,9 +381,9 @@ class TestProjectScaffolder:
             assert len(content) > 0, f"File {file_path} is empty"
 
         # Verify content quality
-        makefile = (project_path / "Makefile").read_text()
-        assert "uv run pytest" in makefile
-        assert "uv run ruff" in makefile
+        justfile = (project_path / "justfile").read_text()
+        assert "uv run pytest" in justfile
+        assert "uv run ruff" in justfile
 
         ci = (project_path / ".github" / "workflows" / "ci.yml").read_text()
         assert "pytest" in ci
@@ -512,7 +512,7 @@ class TestFullProjectGeneration:
         full_files = [
             "config/ruff.toml",
             "config/pytest.ini",
-            "Makefile",
+            "justfile",
             ".github/workflows/ci.yml",
             "CONTRIBUTING.md",
             "CHANGELOG.md",
@@ -558,7 +558,7 @@ class TestFullProjectGeneration:
         assert not (project_path / "plots").exists()
         assert not (project_path / "_research").exists()
         assert not (project_path / "config").exists()
-        assert not (project_path / "Makefile").exists()
+        assert not (project_path / "justfile").exists()
 
         # Verify ISC license
         license_content = (project_path / "LICENSE").read_text()

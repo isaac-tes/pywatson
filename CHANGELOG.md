@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Changed
+
+#### `full` project type: Makefile replaced with justfile
+- `pywatson init --project-type full` (and `pywatson adopt`) now generate a
+  `justfile` instead of a `Makefile`, using [just](https://github.com/casey/just)
+  as the task runner
+- Recipe set is a 1:1 port of the previous Makefile targets (`setup`, `test`,
+  `test-cov`, `lint`, `lint-fix`, `format`, `format-check`, `typecheck`,
+  `check`, `data`, `analyze`, `docs`, `build`, `clean`, `clean-data`)
+- `pywatson adopt` now also recognizes an existing `justfile`/`Justfile` when
+  classifying files in a pre-existing project
+- `docs/MAKEFILE_GUIDE.md` replaced by `docs/JUST_GUIDE.md`
+
+---
+
 ## [0.0.2] — 2026-04-19
 
 ### Added

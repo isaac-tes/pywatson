@@ -7,7 +7,7 @@ comprehensive documentation, example code, and tests.
 Project types:
   - default: PyWatson standard layout with data/{sims, exp_raw, exp_pro}
   - minimal: Lightweight layout with just src, data, scripts, tests
-  - full:    Everything + config/, Makefile, CI, CONTRIBUTING, CHANGELOG
+  - full:    Everything + config/, justfile, CI, CONTRIBUTING, CHANGELOG
 """
 
 import os
@@ -47,7 +47,7 @@ def _git_config(key: str) -> str:
 PROJECT_TYPES = {
     "default": "PyWatson standard (data/{sims, exp_raw, exp_pro})",
     "minimal": "Lightweight (src, data, scripts, tests)",
-    "full": "Full (everything + config/, Makefile, CI, CONTRIBUTING, CHANGELOG)",
+    "full": "Full (everything + config/, justfile, CI, CONTRIBUTING, CHANGELOG)",
 }
 
 # --------------------------------------------------------------------------
@@ -113,7 +113,7 @@ class ProjectScaffolder:
     Supports three project types:
       - ``default``: PyWatson standard layout with data/{sims, exp_raw, exp_pro}
       - ``minimal``: Lightweight layout with just src, data, scripts, tests
-      - ``full``:    Everything from *default* plus config/, Makefile, CI,
+      - ``full``:    Everything from *default* plus config/, justfile, CI,
                      CONTRIBUTING, CHANGELOG
     """
 
@@ -568,7 +568,7 @@ class ProjectScaffolder:
         (self.project_path / "LICENSE").write_text(license_content)
 
     # ------------------------------------------------------------------
-    # Full-type extras: config/, Makefile, CI, CONTRIBUTING, CHANGELOG
+    # Full-type extras: config/, justfile, CI, CONTRIBUTING, CHANGELOG
     # ------------------------------------------------------------------
 
     def create_full_extras(self, author_name: str, author_email: str) -> None:
@@ -577,7 +577,7 @@ class ProjectScaffolder:
         Generates:
           - config/ruff.toml
           - config/pytest.ini
-          - Makefile
+          - justfile
           - .github/workflows/ci.yml
           - CONTRIBUTING.md
           - CHANGELOG.md
@@ -598,9 +598,9 @@ class ProjectScaffolder:
         pytest_content = self._render_template("pytest.ini.jinja2", **context)
         (self.project_path / "config" / "pytest.ini").write_text(pytest_content)
 
-        # Makefile
-        makefile_content = self._render_template("Makefile.jinja2", **context)
-        (self.project_path / "Makefile").write_text(makefile_content)
+        # justfile
+        justfile_content = self._render_template("justfile.jinja2", **context)
+        (self.project_path / "justfile").write_text(justfile_content)
 
         # .github/workflows/ci.yml
         ci_content = self._render_template("ci.yml.jinja2", **context)
@@ -886,7 +886,14 @@ class ProjectScanner:
             ):
                 return "images"
             return "docs"
-        if name in {".gitignore", ".gitattributes", "Makefile", "makefile"}:
+        if name in {
+            ".gitignore",
+            ".gitattributes",
+            "Makefile",
+            "makefile",
+            "justfile",
+            "Justfile",
+        }:
             return "config"
         if ext in self.CONFIG_EXTENSIONS:
             return "config"
@@ -1205,7 +1212,7 @@ def _run_scaffolder(
         # 11. Example notebook (skipped for minimal)
         scaffolder.create_example_notebook()
 
-        # 12. Full-type extras (Makefile, CI, CONTRIBUTING, CHANGELOG, config/)
+        # 12. Full-type extras (justfile, CI, CONTRIBUTING, CHANGELOG, config/)
         if project_type == "full":
             scaffolder.create_full_extras(author_name, author_email)
 
@@ -1228,7 +1235,7 @@ def _run_scaffolder(
         console.print("   uv run python scripts/generate_data.py        # Generate example data")
         if project_type == "full":
             console.print(
-                "   make check                                    # Run all quality checks"
+                "   just check                                    # Run all quality checks"
             )
 
     except Exception as e:

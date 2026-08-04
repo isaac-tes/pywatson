@@ -161,7 +161,7 @@ nav:
       - CLI Reference: CLI.md
       - Utilities Reference: UTILITIES.md
   - Resources:
-      - Makefile Guide: MAKEFILE_GUIDE.md
+      - Just Guide: JUST_GUIDE.md
       - Docker Guide: DOCKER_GUIDE.md
       - Zenodo Guide: ZENODO.md
       - Citation: citation.md

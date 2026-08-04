@@ -35,7 +35,7 @@
 ├── docs/                # Documentation
 {% if project_type == "full" -%}
 ├── config/              # Tool configuration (ruff, pytest, etc.)
-├── Makefile             # Common tasks (make test, make lint, ...)
+├── justfile             # Common tasks (just test, just lint, ...)
 ├── CONTRIBUTING.md      # Contribution guidelines
 ├── CHANGELOG.md         # Release history
 {% endif -%}
@@ -49,6 +49,9 @@
 
 - Python {{ python_version }}+
 - [uv](https://docs.astral.sh/uv/) package manager
+{% if project_type == "full" -%}
+- [just](https://github.com/casey/just#installation) command runner
+{% endif -%}
 
 ```bash
 # Install uv (if not already installed)
@@ -155,13 +158,13 @@ uv sync                          # Reinstall after changes
 ### Quality Checks
 
 ```bash
-make lint        # Run ruff linter
-make format      # Auto-format code
+just lint        # Run ruff linter
+just format      # Auto-format code
 {% if type_checker != "none" -%}
-make typecheck   # Run {{ type_checker }} type checker
+just typecheck   # Run {{ type_checker }} type checker
 {% endif -%}
-make test        # Run pytest
-make check       # Run all checks
+just test        # Run pytest
+just check       # Run all checks
 ```
 
 {% else -%}

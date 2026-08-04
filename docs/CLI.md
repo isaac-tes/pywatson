@@ -44,7 +44,7 @@ pywatson --project-name NAME [OPTIONS]
 |------|----------|--------|
 | `default` | Standard scientific project | `data/{sims,exp_raw,exp_pro}`, `_research/`, `notebooks/`, `plots/` |
 | `minimal` | Lightweight / tooling-only | `src/`, `data/`, `scripts/`, `tests/`, `docs/` |
-| `full` | Publication-ready | Everything in `default` + `config/`, `Makefile`, `.github/workflows/ci.yml`, `CONTRIBUTING.md`, `CHANGELOG.md` |
+| `full` | Publication-ready | Everything in `default` + `config/`, `justfile`, `.github/workflows/ci.yml`, `CONTRIBUTING.md`, `CHANGELOG.md` |
 
 ### Examples
 
