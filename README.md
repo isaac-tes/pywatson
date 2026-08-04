@@ -96,7 +96,7 @@ For complete docs: [uv documentation](https://docs.astral.sh/uv/)
 |------|----------|----------|
 | `default` | Standard research | data/{sims,exp_raw,exp_pro}, notebooks, _research |
 | `minimal` | Lightweight | src, data, scripts, tests, docs |
-| `full` | Publication-ready | everything + config, Makefile, CI, docs |
+| `full` | Publication-ready | everything + config, justfile, CI, docs |
 
 ### Default project structure
 

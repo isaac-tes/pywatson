@@ -116,15 +116,15 @@ class TestTemplateRendering:
     # New templates (C3)
     # ------------------------------------------------------------------
 
-    def test_makefile_template_renders(self, jinja_env, template_context):
-        """Test that Makefile template renders correctly."""
-        template = jinja_env.get_template("Makefile.jinja2")
+    def test_justfile_template_renders(self, jinja_env, template_context):
+        """Test that justfile template renders correctly."""
+        template = jinja_env.get_template("justfile.jinja2")
         content = template.render(**template_context)
 
         assert "uv run pytest" in content
         assert "uv run ruff" in content
         assert "test_project" in content
-        assert "help:" in content
+        assert "default:" in content
         assert "setup:" in content
         assert "clean:" in content
 
@@ -285,10 +285,10 @@ class TestTemplateRendering:
         content = template.render(**context)
 
         assert "# Test Project" in content
-        assert "Makefile" in content
+        assert "justfile" in content
         assert "CONTRIBUTING" in content
         assert "CHANGELOG" in content
-        assert "make" in content.lower()
+        assert "just" in content.lower()
         assert "Apache License" in content
 
     # ------------------------------------------------------------------
@@ -310,7 +310,7 @@ class TestTemplateRendering:
             "README.md.jinja2",
             "notebook.ipynb.jinja2",
             # New templates (C3)
-            "Makefile.jinja2",
+            "justfile.jinja2",
             "ruff.toml.jinja2",
             "pytest.ini.jinja2",
             "ci.yml.jinja2",
