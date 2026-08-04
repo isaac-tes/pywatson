@@ -12,7 +12,7 @@
         <meta name="author" content="Isaac Tesfaye">
       
       
-        <link rel="canonical" href="https://isaac-tes.github.io/pywatson/MAKEFILE_GUIDE/">
+        <link rel="canonical" href="https://isaac-tes.github.io/pywatson/JUST_GUIDE/">
       
       
         <link rel="prev" href="../UTILITIES/">
@@ -25,15 +25,15 @@
       
       
       <link rel="icon" href="../assets/logo.svg">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
-        <title>Makefile Guide - PyWatson</title>
+        <title>Just Guide - PyWatson</title>
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -86,7 +86,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#makefile-guide" class="md-skip">
+        <a href="#just-guide" class="md-skip">
           Skip to content
         </a>
       
@@ -121,7 +121,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Makefile Guide
+              Just Guide
             
           </span>
         </div>
@@ -558,7 +558,7 @@
   <span class="md-ellipsis">
     
   
-    Makefile Guide
+    Just Guide
   
 
     
@@ -576,7 +576,7 @@
   <span class="md-ellipsis">
     
   
-    Makefile Guide
+    Just Guide
   
 
     
@@ -600,6 +600,17 @@
       Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#installing-just" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installing just
+      
+    </span>
+  </a>
+  
+</li>
       
         <li class="md-nav__item">
   <a href="#quick-reference" class="md-nav__link">
@@ -696,10 +707,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#customising-targets" class="md-nav__link">
+  <a href="#customising-recipes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Customising targets
+        Customising recipes
       
     </span>
   </a>
@@ -978,6 +989,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#installing-just" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installing just
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#quick-reference" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1072,10 +1094,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#customising-targets" class="md-nav__link">
+  <a href="#customising-recipes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Customising targets
+        Customising recipes
       
     </span>
   </a>
@@ -1161,149 +1183,156 @@
   
 
 
-<h1 id="makefile-guide">Makefile Guide<a class="headerlink" href="#makefile-guide" title="Permanent link">&para;</a></h1>
-<p>Projects created with <code>pywatson init --project-type full</code> include a <code>Makefile</code>
-with pre-configured targets for all common development tasks.
-Run <code>make help</code> at any time to see a summary of available targets.</p>
+<h1 id="just-guide">Just Guide<a class="headerlink" href="#just-guide" title="Permanent link">&para;</a></h1>
+<p>Projects created with <code>pywatson init --project-type full</code> include a <code>justfile</code>
+with pre-configured recipes for all common development tasks, run via
+<a href="https://github.com/casey/just"><code>just</code></a>. Run <code>just</code> or <code>just --list</code> at any
+time to see a summary of available recipes.</p>
 <blockquote>
-<p><strong>Note</strong>: The <code>Makefile</code> is only generated for <code>--project-type full</code>.
+<p><strong>Note</strong>: The <code>justfile</code> is only generated for <code>--project-type full</code>.
 <code>default</code> and <code>minimal</code> projects do not include one.</p>
 </blockquote>
+<hr />
+<h2 id="installing-just">Installing just<a class="headerlink" href="#installing-just" title="Permanent link">&para;</a></h2>
+<p><code>just</code> is not preinstalled on most systems. Install it via your package
+manager or <a href="https://github.com/casey/just#installation">the official install instructions</a>:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># macOS</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>brew<span class="w"> </span>install<span class="w"> </span>just
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="c1"># Ubuntu / Debian</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>sudo<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>just
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="c1"># Any platform, via cargo</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>cargo<span class="w"> </span>install<span class="w"> </span>just
+</span></code></pre></div>
 <hr />
 <h2 id="quick-reference">Quick reference<a class="headerlink" href="#quick-reference" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Target</th>
+<th>Recipe</th>
 <th>What it does</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>make help</code></td>
-<td>List all targets with descriptions</td>
+<td><code>just</code> / <code>just --list</code></td>
+<td>List all recipes with descriptions</td>
 </tr>
 <tr>
-<td><code>make setup</code></td>
+<td><code>just setup</code></td>
 <td>Install all dependencies (runs <code>uv sync</code>)</td>
 </tr>
 <tr>
-<td><code>make test</code></td>
+<td><code>just test</code></td>
 <td>Run the test suite</td>
 </tr>
 <tr>
-<td><code>make test-cov</code></td>
+<td><code>just test-cov</code></td>
 <td>Run tests and show a coverage report</td>
 </tr>
 <tr>
-<td><code>make lint</code></td>
+<td><code>just lint</code></td>
 <td>Check code with ruff</td>
 </tr>
 <tr>
-<td><code>make lint-fix</code></td>
+<td><code>just lint-fix</code></td>
 <td>Auto-fix ruff lint issues</td>
 </tr>
 <tr>
-<td><code>make format</code></td>
+<td><code>just format</code></td>
 <td>Format code with ruff</td>
 </tr>
 <tr>
-<td><code>make format-check</code></td>
+<td><code>just format-check</code></td>
 <td>Check formatting without modifying files</td>
 </tr>
 <tr>
-<td><code>make typecheck</code></td>
+<td><code>just typecheck</code></td>
 <td>Run the configured type checker</td>
 </tr>
 <tr>
-<td><code>make check</code></td>
+<td><code>just check</code></td>
 <td>Run all quality gates (lint + format + typecheck + test)</td>
 </tr>
 <tr>
-<td><code>make data</code></td>
+<td><code>just data</code></td>
 <td>Execute <code>scripts/generate_data.py</code></td>
 </tr>
 <tr>
-<td><code>make analyze</code></td>
+<td><code>just analyze</code></td>
 <td>Execute <code>scripts/analyze_data.py</code></td>
 </tr>
 <tr>
-<td><code>make docs</code></td>
+<td><code>just docs</code></td>
 <td>Build documentation (configure as needed)</td>
 </tr>
 <tr>
-<td><code>make build</code></td>
+<td><code>just build</code></td>
 <td>Build the distribution package</td>
 </tr>
 <tr>
-<td><code>make clean</code></td>
+<td><code>just clean</code></td>
 <td>Remove build artefacts</td>
 </tr>
 </tbody>
 </table>
 <hr />
 <h2 id="type-checker-integration">Type checker integration<a class="headerlink" href="#type-checker-integration" title="Permanent link">&para;</a></h2>
-<p>The <code>typecheck</code> target adapts to whichever type checker you chose when
+<p>The <code>typecheck</code> recipe adapts to whichever type checker you chose when
 creating the project:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># If you chose --type-checker ty (default):</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>make<span class="w"> </span>typecheck<span class="w">   </span><span class="c1"># runs: uv run ty check src/&lt;package&gt;/</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="c1"># If you chose --type-checker mypy:</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>make<span class="w"> </span>typecheck<span class="w">   </span><span class="c1"># runs: uv run mypy src/&lt;package&gt;/</span>
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="c1"># If you chose --type-checker none:</span>
-</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>make<span class="w"> </span>typecheck<span class="w">   </span><span class="c1"># prints a notice and exits successfully</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># If you chose --type-checker ty (default):</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>just<span class="w"> </span>typecheck<span class="w">   </span><span class="c1"># runs: uv run ty check src/&lt;package&gt;/</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># If you chose --type-checker mypy:</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>just<span class="w"> </span>typecheck<span class="w">   </span><span class="c1"># runs: uv run mypy src/&lt;package&gt;/</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="c1"># If you chose --type-checker none:</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>just<span class="w"> </span>typecheck<span class="w">   </span><span class="c1"># prints a notice and exits successfully</span>
 </span></code></pre></div>
-<p>Similarly, <code>make check</code> omits the typecheck step when no type checker was
+<p>Similarly, <code>just check</code> omits the typecheck step when no type checker was
 configured.</p>
 <hr />
 <h2 id="common-workflows">Common workflows<a class="headerlink" href="#common-workflows" title="Permanent link">&para;</a></h2>
 <h3 id="first-time-setup">First-time setup<a class="headerlink" href="#first-time-setup" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>make<span class="w"> </span>setup<span class="w">       </span><span class="c1"># creates .venv and installs all deps via uv sync</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>just<span class="w"> </span>setup<span class="w">       </span><span class="c1"># creates .venv and installs all deps via uv sync</span>
 </span></code></pre></div>
 <h3 id="before-committing">Before committing<a class="headerlink" href="#before-committing" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>make<span class="w"> </span>check<span class="w">       </span><span class="c1"># lint + format-check + typecheck + tests in one shot</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>just<span class="w"> </span>check<span class="w">       </span><span class="c1"># lint + format-check + typecheck + tests in one shot</span>
 </span></code></pre></div>
 <h3 id="run-only-tests">Run only tests<a class="headerlink" href="#run-only-tests" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>make<span class="w"> </span><span class="nb">test</span><span class="w">        </span><span class="c1"># fast, no coverage</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>make<span class="w"> </span>test-cov<span class="w">    </span><span class="c1"># with coverage report</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>just<span class="w"> </span><span class="nb">test</span><span class="w">        </span><span class="c1"># fast, no coverage</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>just<span class="w"> </span>test-cov<span class="w">    </span><span class="c1"># with coverage report</span>
 </span></code></pre></div>
 <h3 id="fix-formatting-lint-issues">Fix formatting / lint issues<a class="headerlink" href="#fix-formatting-lint-issues" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>make<span class="w"> </span>format<span class="w">      </span><span class="c1"># auto-format with ruff</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>make<span class="w"> </span>lint-fix<span class="w">    </span><span class="c1"># auto-fix lint violations</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>just<span class="w"> </span>format<span class="w">      </span><span class="c1"># auto-format with ruff</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>just<span class="w"> </span>lint-fix<span class="w">    </span><span class="c1"># auto-fix lint violations</span>
 </span></code></pre></div>
 <h3 id="run-data-pipeline">Run data pipeline<a class="headerlink" href="#run-data-pipeline" title="Permanent link">&para;</a></h3>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>make<span class="w"> </span>data<span class="w">        </span><span class="c1"># generate raw / simulated data</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>make<span class="w"> </span>analyze<span class="w">     </span><span class="c1"># run analysis scripts</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>just<span class="w"> </span>data<span class="w">        </span><span class="c1"># generate raw / simulated data</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>just<span class="w"> </span>analyze<span class="w">     </span><span class="c1"># run analysis scripts</span>
 </span></code></pre></div>
 <hr />
-<h2 id="customising-targets">Customising targets<a class="headerlink" href="#customising-targets" title="Permanent link">&para;</a></h2>
-<p>The <code>Makefile</code> is plain GNU Make — edit it freely.  Add project-specific
-targets at the end:</p>
-<div class="language-makefile highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c"># Example: run a specific simulation</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="nf">sim-long</span><span class="o">:</span><span class="w"> </span><span class="c">## Run the long simulation (high resolution)</span>
-</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">    </span>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/generate_data.py<span class="w"> </span>--resolution<span class="w"> </span>high
-</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>
-</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="nf">.PHONY</span><span class="o">:</span><span class="w"> </span><span class="n">sim</span>-<span class="n">long</span>
+<h2 id="customising-recipes">Customising recipes<a class="headerlink" href="#customising-recipes" title="Permanent link">&para;</a></h2>
+<p>The <code>justfile</code> is plain <code>just</code> syntax — edit it freely. Add project-specific
+recipes at the end:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a># Run the long simulation (high resolution)
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>sim-long:
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    uv run python scripts/generate_data.py --resolution high
 </span></code></pre></div>
-<p>The <code>make help</code> output is generated automatically from <code>## comment</code> markers,
-so any target with a <code>## description</code> will appear there.</p>
+<p>Unlike Make, <code>just</code> needs no <code>.PHONY</code> declarations, and <code>just --list</code>
+auto-generates its summary from the recipe names and the <code>#</code> doc-comment
+directly above each recipe — no separate <code>help</code> target to maintain.</p>
 <hr />
 <h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
-<p><strong><code>make: command not found</code></strong><br />
-Install GNU Make via your package manager:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1"># macOS</span>
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>brew<span class="w"> </span>install<span class="w"> </span>make
-</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
-</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="c1"># Ubuntu / Debian</span>
-</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>sudo<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>make
-</span></code></pre></div>
-<p><strong><code>uv: command not found</code></strong><br />
+<p><strong><code>just: command not found</code></strong>
+Install <code>just</code> (see <a href="#installing-just">Installing just</a> above).</p>
+<p><strong><code>uv: command not found</code></strong>
 Install uv first:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>curl<span class="w"> </span>-LsSf<span class="w"> </span>https://astral.sh/uv/install.sh<span class="w"> </span><span class="p">|</span><span class="w"> </span>sh
 </span></code></pre></div>
-<p><strong><code>Error: No module named pytest</code></strong><br />
-Run <code>make setup</code> to install dependencies before running tests.</p>
+<p><strong><code>Error: No module named pytest</code></strong>
+Run <code>just setup</code> to install dependencies before running tests.</p>
 
 
 
@@ -1326,7 +1355,7 @@ Run <code>make setup</code> to install dependencies before running tests.</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="March 10, 2026 14:08:43 UTC"><span class="timeago" datetime="2026-03-10T14:08:43+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="March 10, 2026 14:08:43 UTC">2026-03-10</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="August 4, 2026 09:50:09 UTC"><span class="timeago" datetime="2026-08-04T09:50:09+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="August 4, 2026 09:50:09 UTC">2026-08-04</span>
   </span>
 
     
@@ -1336,7 +1365,7 @@ Run <code>make setup</code> to install dependencies before running tests.</p>
     <span class="md-icon" title="Created">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14.47 15.08 11 13V7h1.5v5.25l3.08 1.83c-.41.28-.79.62-1.11 1m-1.39 4.84c-.36.05-.71.08-1.08.08-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8c0 .37-.03.72-.08 1.08.69.1 1.33.32 1.92.64.1-.56.16-1.13.16-1.72 0-5.5-4.5-10-10-10S2 6.5 2 12s4.47 10 10 10c.59 0 1.16-.06 1.72-.16-.32-.59-.54-1.23-.64-1.92M18 15v3h-3v2h3v3h2v-3h3v-2h-3v-3z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="March 10, 2026 14:08:43 UTC"><span class="timeago" datetime="2026-03-10T14:08:43+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="March 10, 2026 14:08:43 UTC">2026-03-10</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="August 4, 2026 09:50:09 UTC"><span class="timeago" datetime="2026-08-04T09:50:09+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="August 4, 2026 09:50:09 UTC">2026-08-04</span>
   </span>
 
     
@@ -1457,7 +1486,7 @@ Run <code>make setup</code> to install dependencies before running tests.</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.instant.prefetch", "navigation.instant.progress", "navigation.tracking", "navigation.sections", "navigation.path", "navigation.indexes", "navigation.top", "navigation.footer", "search.suggest", "search.highlight", "search.share", "header.autohide", "content.code.copy", "content.tooltips", "toc.follow"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
       
         <script src="../js/timeago.min.js"></script>
       
